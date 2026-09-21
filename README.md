@@ -10,32 +10,51 @@ Benchmark: [SciFact](https://github.com/allenai/scifact) (Wadden et al., 2020,
 EMNLP) — 1,409 expert-written claims verified against a 5,183-abstract corpus
 drawn from high-quality biomedical journals.
 
-## Status: Phase 2 of 13 (see `experiments/ROADMAP.md`)
+## Status: Phase 3 of 13 (see `experiments/ROADMAP.md`)
 
-**Real dataset confirmed** (downloaded and verified by the user on 2026-09-21,
-not estimated or recalled from training data):
+**Real BM25 baseline results** (run by the user on 2026-09-21, on the real
+downloaded dev set — not simulated):
 
-| File | Line count |
+| Metric | Value |
 |---|---|
-| `corpus.jsonl` | 5,183 |
-| `claims_train.jsonl` | 809 |
-| `claims_dev.jsonl` | 300 |
-| `claims_test.jsonl` | 300 |
+| Corpus size | 5,183 |
+| Dev claims total | 300 |
+| Dev claims scored (have gold evidence) | 188 |
+| Dev claims excluded (NEI, no evidence to retrieve) | 112 |
+| Recall@1 | 0.702 |
+| Recall@5 | 0.899 |
+| Recall@10 | 0.936 |
+| MRR | 0.782 |
+| Index build time | 0.90s |
+| Avg latency/claim | 35.9ms |
 
-809 + 300 + 300 = 1,409 total claims, matching the count reported in
-Wadden et al. 2020. This is the first real, verified checkpoint in the
-project — everything from here on is built and evaluated against these
-actual files.
+Config: `simple_lowercase_alnum` tokenizer, k1=1.5, b=0.75, top_k=10 (see
+`configs/retrieval.yaml`). Full output in `experiments/results/bm25_baseline.json`.
 
-**Phase 1 — done:**
-- Repository skeleton, `configs/data.yaml`, typed schema, download script, JSONL loader
-- `tests/test_data_loader.py` — 7/7 passing against synthetic fixtures
-- Real download executed and verified by the user (sandbox here still cannot
-  reach the S3 bucket directly — see `data/download_data.py` docstring —
-  so real-data runs happen on the user's machine; all code is written to
-  work identically either way)
+**Interpretation, not spin:** BM25 does well here because SciFact claims are
+written by rewriting a citation sentence from the source abstract, so
+vocabulary overlap with the true evidence document is naturally high. This
+is a real property of the dataset, not a property of retrieval in general —
+worth calling out explicitly in the final report's Limitations section,
+since a harder open-domain corpus (e.g. SciFact-Open) would likely show a
+bigger gap between BM25 and dense/hybrid retrieval. That's exactly the kind
+of comparison Phase 4 (dense) and Phase 7 (hybrid) will test.
 
-**Phase 2 — in progress:** BM25 sparse retrieval baseline (Baseline A).
+**Phase 1–3 — done** (see checkpoints above and in ROADMAP.md).
+**Phase 4 — code ready, awaiting a real run:** dense retrieval baseline
+(Baseline B) — `retrieval/embeddings.py`, `retrieval/dense.py` (FAISS flat
+IP index), `experiments/run_dense_baseline.py`. Unit-tested (3/3 new tests,
+17/17 total) against a hand-crafted fake embedder, since loading the real
+`sentence-transformers/all-MiniLM-L6-v2` model requires downloading it from
+huggingface.co, which this sandbox can't reach. Run on your machine:
+```powershell
+pip install -r requirements.txt
+pytest tests/ -v
+python -m experiments.run_dense_baseline
+```
+The first run downloads the ~80MB MiniLM model, then builds a FAISS index
+and evaluates Recall@K/MRR on the real dev set. Paste back the printed
+JSON and I'll record it next to the BM25 numbers for a real comparison.
 
 ## Setup
 ```bash
