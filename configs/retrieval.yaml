@@ -1,0 +1,24 @@
+# SciVerify — retrieval configuration
+# Every retriever reads its parameters from here; no model names or
+# hyperparameters are hardcoded in retrieval/*.py.
+
+bm25:
+  tokenizer: simple_lowercase_alnum   # see retrieval/tokenize.py
+  k1: 1.5
+  b: 0.75
+  top_k: 10                            # candidates returned per claim
+
+dense:
+  # Populated in Phase 4. Left here now so the file format is stable and
+  # future phases only add keys, never restructure existing ones.
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  top_k: 10
+  index_type: "flat_ip"                # FAISS index type
+
+hybrid:
+  # Populated in Phase 7 (proposed system).
+  fusion_method: "reciprocal_rank_fusion"
+  rrf_k: 60
+
+evaluation:
+  recall_at_k: [1, 5, 10]

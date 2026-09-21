@@ -10,36 +10,32 @@ Benchmark: [SciFact](https://github.com/allenai/scifact) (Wadden et al., 2020,
 EMNLP) — 1,409 expert-written claims verified against a 5,183-abstract corpus
 drawn from high-quality biomedical journals.
 
-## Status: Phase 1 of 13 (see `experiments/ROADMAP.md`)
+## Status: Phase 2 of 13 (see `experiments/ROADMAP.md`)
 
-**Done and verified in this environment:**
-- Repository skeleton (`sciverify/{data,models,retrieval,verification,evaluation,experiments,api,frontend,tests,configs,notebooks}`)
-- `configs/data.yaml` — all dataset paths/labels/seeds centralized, nothing hardcoded in code
-- `data/schema.py` — typed dataclasses matching SciFact's documented schema exactly (claim, evidence keyed by doc_id, rationale sentences/labels)
-- `data/download_data.py` — reproducible download+extract script
-- `data/loader.py` — JSONL loader, label-count summary, conflicting-evidence detection
-- `tests/test_data_loader.py` — **7/7 passing** against synthetic fixtures shaped exactly like real SciFact rows
+**Real dataset confirmed** (downloaded and verified by the user on 2026-09-21,
+not estimated or recalled from training data):
 
-**Known limitation, stated plainly:** the sandbox this was built in only
-allows outbound network access to a small domain whitelist (PyPI, npm,
-GitHub, etc.) and cannot reach `scifact.s3-us-west-2.amazonaws.com` or
-`huggingface.co`. I confirmed this with a direct request (403,
-`host_not_allowed`) rather than assuming. That means:
+| File | Line count |
+|---|---|
+| `corpus.jsonl` | 5,183 |
+| `claims_train.jsonl` | 809 |
+| `claims_dev.jsonl` | 300 |
+| `claims_test.jsonl` | 300 |
 
-- `download_data.py` is written correctly and will work on a normal machine, but **has not been run against the real dataset yet**, and
-- **no real dataset statistics, retrieval numbers, or verification metrics exist yet.** Every number in this README, in future phases, and eventually in the research report will be the actual output of a real run — not estimated or recalled from training data.
+809 + 300 + 300 = 1,409 total claims, matching the count reported in
+Wadden et al. 2020. This is the first real, verified checkpoint in the
+project — everything from here on is built and evaluated against these
+actual files.
 
-### To unblock Phase 1 fully
-Run, on any machine with normal internet access:
-```bash
-pip install -r requirements.txt
-python -m data.download_data
-python -c "from pathlib import Path; from data.loader import load_config, dataset_summary; c = load_config(); print(dataset_summary(Path(c['paths']['raw_dir']), c))"
-```
-This will print the real corpus size, claim counts per split, and label
-distribution. Paste that output back and I will use it verbatim to correct
-any numbers, then continue to Phase 2 (BM25 baseline) with confidence the
-foundation is right.
+**Phase 1 — done:**
+- Repository skeleton, `configs/data.yaml`, typed schema, download script, JSONL loader
+- `tests/test_data_loader.py` — 7/7 passing against synthetic fixtures
+- Real download executed and verified by the user (sandbox here still cannot
+  reach the S3 bucket directly — see `data/download_data.py` docstring —
+  so real-data runs happen on the user's machine; all code is written to
+  work identically either way)
+
+**Phase 2 — in progress:** BM25 sparse retrieval baseline (Baseline A).
 
 ## Setup
 ```bash
