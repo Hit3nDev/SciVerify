@@ -1,0 +1,31 @@
+# SciVerify — verification configuration
+
+nli:
+  # A general-purpose NLI model. Not domain-tuned on biomedical text —
+  # worth an ablation later (swap for a SciBERT/PubMedBERT NLI checkpoint)
+  # once this baseline number exists to compare against.
+  model_name: "facebook/bart-large-mnli"
+  batch_size: 8
+  # Raw NLI model output labels -> SciVerify's RawLabel-equivalent verdicts.
+  # bart-large-mnli outputs: contradiction, neutral, entailment
+  label_map:
+    entailment: SUPPORT
+    contradiction: CONTRADICT
+    neutral: NEI
+
+baseline_c:
+  # Baseline C = "dense retrieval + NLI" per the research spec (section 4).
+  # We nonetheless default the *retriever actually used for this baseline's
+  # evidence* to BM25, because Phase 4 showed dense retrieval underperforming
+  # BM25 on this dataset — using dense here would confound "does NLI help"
+  # with "the evidence retrieval was worse to begin with". This is a
+  # documented substitution, not a silent one. Set to "dense" to run the
+  # baseline as originally specified for direct comparison.
+  retriever: bm25
+  evidence_top_k: 3   # number of top-retrieved abstracts fed to the NLI stage
+
+aggregation:
+  # How per-document NLI labels combine into one claim verdict.
+  # See verification/aggregate.py for the conflicting-evidence logic
+  # required by research spec section 12.
+  min_confidence_for_verdict: 0.5

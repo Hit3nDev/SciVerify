@@ -64,6 +64,24 @@ class Claim:
             labels.update(r.label for r in rationales)
         return RawLabel.SUPPORT in labels and RawLabel.CONTRADICT in labels
 
+    def gold_verdict(self) -> "Verdict":
+        """Ground-truth claim-level verdict derived from rationale labels.
+
+        - No evidence at all -> UNKNOWN (NEI)
+        - Evidence docs disagree (some SUPPORT, some CONTRADICT) -> CONFLICTING
+        - Otherwise -> SUPPORTED or CONTRADICTED per the single label present
+        """
+        if not self.evidence:
+            return Verdict.UNKNOWN
+        if self.has_conflicting_evidence():
+            return Verdict.CONFLICTING
+        labels = {r.label for rationales in self.evidence.values() for r in rationales}
+        if RawLabel.SUPPORT in labels:
+            return Verdict.SUPPORTED
+        if RawLabel.CONTRADICT in labels:
+            return Verdict.CONTRADICTED
+        return Verdict.UNKNOWN  # defensive fallback; should not occur given RawLabel enum
+
 
 @dataclass(frozen=True)
 class CorpusDocument:
