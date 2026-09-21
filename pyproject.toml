@@ -1,0 +1,24 @@
+[project]
+name = "sciverify"
+version = "0.1.0"
+description = "Open-domain scientific claim verification via retrieval-augmented evidence verification (SciFact benchmark)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# NOTE: code in this repo is MIT-licensed. The SciFact DATASET itself is
+# distributed under CC BY-NC 2.0 (non-commercial) by AllenAI — see
+# data/DATA_LICENSE_NOTICE.md. Anyone reusing this repo must respect that
+# separately from the code license.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+disallow_untyped_defs = false

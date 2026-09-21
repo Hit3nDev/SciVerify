@@ -1,0 +1,45 @@
+# SciVerify — dataset configuration
+# Source: AllenAI SciFact (Wadden et al., 2020, EMNLP)
+# License: CC BY-NC 2.0 (non-commercial). See data/DATA_LICENSE_NOTICE.md.
+
+dataset:
+  name: scifact
+  source_url: "https://scifact.s3-us-west-2.amazonaws.com/release/latest/data.tar.gz"
+  citation_bibtex: |
+    @inproceedings{Wadden2020FactOF,
+      title={Fact or Fiction: Verifying Scientific Claims},
+      author={David Wadden and Shanchuan Lin and Kyle Lo and Lucy Lu Wang and
+              Madeleine van Zuylen and Arman Cohan and Hannaneh Hajishirzi},
+      booktitle={EMNLP},
+      year={2020}
+    }
+
+paths:
+  raw_dir: "data/raw"                     # untouched downloaded files
+  processed_dir: "data/processed"         # normalized/cached artifacts (indices, etc.)
+  corpus_file: "corpus.jsonl"
+  claims_train_file: "claims_train.jsonl"
+  claims_dev_file: "claims_dev.jsonl"
+  claims_test_file: "claims_test.jsonl"   # unlabeled — do NOT use for reported metrics
+
+labels:
+  # Raw SciFact rationale labels -> internal verdict labels used throughout SciVerify.
+  # A claim with no evidence for a cited/retrieved doc maps to UNKNOWN (NEI).
+  raw_to_internal:
+    SUPPORT: SUPPORTED
+    CONTRADICT: CONTRADICTED
+  internal_labels: [SUPPORTED, CONTRADICTED, UNKNOWN]
+  # When a single claim has SUPPORT evidence from one abstract and CONTRADICT
+  # evidence from another, the aggregation layer (verification/aggregate.py)
+  # must NOT silently pick one — see research spec section 12.
+  conflicting_evidence_label: CONFLICTING
+
+splits:
+  # SciFact's official split. Test labels are not public; we only report
+  # metrics on train/dev. A 5-fold CV split is also distributed with the
+  # data for lower-variance model development — enabled via `use_cv_folds`.
+  use_cv_folds: false
+  num_folds: 5
+
+reproducibility:
+  random_seed: 42

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+data/raw/
+data/processed/
+*.faiss
+*.index
+.env
+.DS_Store
+notebooks/.ipynb_checkpoints/
+experiments/results/*.json
+!experiments/results/.gitkeep
