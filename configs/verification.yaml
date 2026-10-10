@@ -1,10 +1,16 @@
 # SciVerify — verification configuration
 
 nli:
-  # A general-purpose NLI model. Not domain-tuned on biomedical text —
-  # worth an ablation later (swap for a SciBERT/PubMedBERT NLI checkpoint)
-  # once this baseline number exists to compare against.
-  model_name: "facebook/bart-large-mnli"
+  # Switched from facebook/bart-large-mnli (~400M params) to a much lighter
+  # MNLI-finetuned model after Phase 5's first real run showed bart-large
+  # taking a very long time per claim on CPU with no progress feedback --
+  # a genuine mismatch with research spec section 9 ("models that can
+  # realistically run on a student machine"). cross-encoder/nli-MiniLM2-L6-H768
+  # (~22M params) is a standard, widely-used lightweight NLI model; same
+  # entailment/contradiction/neutral output space, loaded the same way.
+  # Swap back to bart-large-mnli (or a domain-tuned model) later as an
+  # ablation once this lighter baseline's numbers exist to compare against.
+  model_name: "cross-encoder/nli-MiniLM2-L6-H768"
   batch_size: 8
   # Raw NLI model output labels -> SciVerify's RawLabel-equivalent verdicts.
   # bart-large-mnli outputs: contradiction, neutral, entailment

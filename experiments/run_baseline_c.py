@@ -76,7 +76,7 @@ def main() -> None:
     t0 = time.perf_counter()
     gold_verdicts, predicted_verdicts, per_claim_confidences = [], [], []
 
-    for claim in dev_claims:
+    for i, claim in enumerate(dev_claims, start=1):
         retrieved = retriever.retrieve(claim.claim, top_k=evidence_top_k)
         per_document = []
         for scored_doc in retrieved:
@@ -89,6 +89,16 @@ def main() -> None:
         gold_verdicts.append(claim.gold_verdict())
         predicted_verdicts.append(result.verdict)
         per_claim_confidences.append(result.confidence)
+
+        if i % 10 == 0 or i == len(dev_claims):
+            elapsed = time.perf_counter() - t0
+            rate = elapsed / i
+            eta_s = rate * (len(dev_claims) - i)
+            print(
+                f"  [{i}/{len(dev_claims)}] elapsed={elapsed:.1f}s "
+                f"avg={rate*1000:.0f}ms/claim eta={eta_s:.0f}s",
+                flush=True,
+            )
 
     total_time_s = time.perf_counter() - t0
     per_claim_latency_ms = (total_time_s / len(dev_claims)) * 1000
@@ -118,6 +128,7 @@ def main() -> None:
         "verification": {
             "accuracy": verification_result.accuracy,
             "macro_f1": verification_result.macro_f1,
+            "macro_f1_gold_classes": verification_result.macro_f1_gold_classes,
             "per_class_precision": verification_result.per_class_precision,
             "per_class_recall": verification_result.per_class_recall,
             "per_class_f1": verification_result.per_class_f1,

@@ -116,3 +116,15 @@ def test_gold_verdict_matches_aggregate_vocabulary():
         cited_doc_ids=[10, 20],
     )
     assert conflicting_claim.gold_verdict() == Verdict.CONFLICTING
+
+
+def test_macro_f1_gold_classes_ignores_class_with_no_gold_examples():
+    # CONFLICTING is predicted once but never present in gold -> its F1 is 0.
+    gold = [Verdict.SUPPORTED, Verdict.SUPPORTED, Verdict.UNKNOWN]
+    pred = [Verdict.SUPPORTED, Verdict.CONFLICTING, Verdict.UNKNOWN]
+    result = evaluate_verification(gold, pred)
+    assert result.support["CONFLICTING"] == 0
+    assert result.macro_f1_gold_classes > result.macro_f1
+    assert result.macro_f1 == pytest.approx(
+        sum(result.per_class_f1.values()) / len(result.per_class_f1)
+    )

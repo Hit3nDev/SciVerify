@@ -19,7 +19,8 @@ class VerificationEvalResult:
     per_class_precision: Dict[str, float]
     per_class_recall: Dict[str, float]
     per_class_f1: Dict[str, float]
-    macro_f1: float
+    macro_f1: float                # averaged over every label seen in gold OR predicted
+    macro_f1_gold_classes: float   # averaged only over labels that have gold examples
     support: Dict[str, int]  # number of gold examples per class
     labels_present: List[str]
 
@@ -47,12 +48,19 @@ def evaluate_verification(
 
     macro_f1 = float(sum(f1s) / len(f1s)) if len(f1s) else 0.0
 
+    # A class with zero gold examples (e.g. CONFLICTING on SciFact dev) can only
+    # score 0, which drags the plain macro-F1 down for a reason unrelated to
+    # model quality. Report the gold-classes-only average alongside it.
+    gold_f1s = [float(f) for f, sup in zip(f1s, supports) if sup > 0]
+    macro_f1_gold = sum(gold_f1s) / len(gold_f1s) if gold_f1s else 0.0
+
     return VerificationEvalResult(
         accuracy=accuracy,
         per_class_precision=dict(zip(labels_present, (float(p) for p in precisions))),
         per_class_recall=dict(zip(labels_present, (float(r) for r in recalls))),
         per_class_f1=dict(zip(labels_present, (float(f) for f in f1s))),
         macro_f1=macro_f1,
+        macro_f1_gold_classes=macro_f1_gold,
         support=dict(zip(labels_present, (int(s) for s in supports))),
         labels_present=labels_present,
     )

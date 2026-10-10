@@ -10,7 +10,7 @@ Benchmark: [SciFact](https://github.com/allenai/scifact) (Wadden et al., 2020,
 EMNLP) — 1,409 expert-written claims verified against a 5,183-abstract corpus
 drawn from high-quality biomedical journals.
 
-## Status: Phase 3 of 13 (see `experiments/ROADMAP.md`)
+## Status: Phase 5 of 13 (see `experiments/ROADMAP.md`)
 
 **Real BM25 baseline results** (run by the user on 2026-09-21, on the real
 downloaded dev set — not simulated):
@@ -69,20 +69,35 @@ signal, or if a biomedical-domain embedding model (e.g. PubMedBERT-based)
 is used instead of general-purpose MiniLM. Worth an ablation once Phase 7
 exists rather than assuming either way now.
 
-**Phase 5 — code ready, awaiting a real run:** Baseline C (retrieval + NLI
-verification). Added:
-- `verification/nli.py` — real MNLI-style classification (premise=evidence, hypothesis=claim) via `facebook/bart-large-mnli`, not a placeholder
-- `verification/aggregate.py` — combines per-document NLI predictions into one claim verdict, with explicit CONFLICTING handling (spec section 12) rather than silently picking a side
-- `evaluation/verification_metrics.py` — accuracy, per-class precision/recall/F1, macro-F1 via scikit-learn
-- `experiments/run_baseline_c.py` — full pipeline: retrieve top-3 evidence docs (BM25 by default — see `configs/verification.yaml` for why dense isn't the default here), run NLI on each, aggregate to a verdict, score against `Claim.gold_verdict()`
+**Phase 5 — done, with real results (Baseline C: BM25 retrieval + NLI):**
 
-29/29 tests pass, including 8 new tests directly exercising the conflicting-evidence rule. This is unit-tested with hand-built NLI predictions — the real `bart-large-mnli` model (~1.6GB) needs Hugging Face access this sandbox doesn't have. Run on your machine:
-```powershell
-pip install -r requirements.txt
-pytest tests/ -v
-python -m experiments.run_baseline_c
-```
-First run downloads the NLI model, then evaluates the full pipeline (all 300 dev claims, including NEI ones scored as UNKNOWN) and prints real retrieval + verification metrics. This will likely take longer than the previous runs — NLI inference on CPU is the slowest stage so far.
+Run on a CPU-only Windows machine, all 300 dev claims, `facebook/bart-large-mnli`,
+BM25 top-3 evidence, confidence threshold 0.5.
+
+| Class | Gold claims | Precision | Recall | F1 |
+|---|---|---|---|---|
+| SUPPORTED | 124 | 0.814 | 0.565 | 0.667 |
+| CONTRADICTED | 64 | 0.452 | 0.656 | 0.535 |
+| UNKNOWN (NEI) | 112 | 0.619 | 0.580 | 0.599 |
+| CONFLICTING | 0 | 0.000 | 0.000 | 0.000 |
+
+| Metric | Value |
+|---|---|
+| Accuracy | 0.590 (177/300) |
+| Macro-F1, all four labels | 0.450 |
+| Macro-F1, labels with gold examples only | 0.600 (derived) |
+| Total time / per claim | 2,006 s / 6.7 s |
+
+**How to read this honestly:**
+- The two macro-F1 numbers differ only because the dev set has no CONFLICTING gold claims, so that class can only score 0. 0.600 is the fairer summary of verification quality; 0.450 is reported too so nothing is hidden. The 0.600 figure was derived afterwards from the per-class F1s, not printed by the run.
+- SUPPORTED predictions are mostly right (precision 0.81) but many supported claims are missed (recall 0.56). CONTRADICTED is the opposite: recall 0.66, precision 0.45, so the NLI model over-predicts contradiction.
+- Only 65 of 112 NEI claims were labelled UNKNOWN. Retrieval always returns 3 documents, so there is usually something for the NLI model to react to.
+- At least one claim was predicted CONFLICTING, and every such prediction counts as an error because no dev claim is conflicting. Detecting conflict is a design choice this benchmark cannot reward.
+- This run used `bart-large-mnli`, not the lighter MiniLM model now in `configs/verification.yaml`. Later comparisons must either use the same NLI model or rerun this baseline with the new one.
+- Retrieval numbers are identical to Baseline A because Baseline C reuses BM25.
+- This is a single run on the dev set with no confidence intervals or repeated seeds.
+
+**Next: Phase 7 — the proposed hybrid system** (BM25 + dense fusion, reranking, NLI, confidence), evaluated against all three baselines with the same NLI model.
 
 ## Setup
 ```bash
