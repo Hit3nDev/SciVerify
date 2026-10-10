@@ -35,3 +35,13 @@ aggregation:
   # See verification/aggregate.py for the conflicting-evidence logic
   # required by research spec section 12.
   min_confidence_for_verdict: 0.5
+
+proposed:
+  # Proposed system = hybrid retrieval + sentence-level evidence selection + NLI
+  # + conflict-aware aggregation. Every component can be switched off from the
+  # command line (see experiments/run_proposed.py) so the ablation study can
+  # measure what each one actually contributes.
+  retrieval: hybrid        # bm25 | dense | hybrid
+  evidence_top_k: 3        # documents passed to the NLI stage
+  sentence_selection: true # false = feed the whole abstract, as in Baseline C
+  sentences_per_doc: 2

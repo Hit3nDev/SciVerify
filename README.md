@@ -97,7 +97,21 @@ BM25 top-3 evidence, confidence threshold 0.5.
 - Retrieval numbers are identical to Baseline A because Baseline C reuses BM25.
 - This is a single run on the dev set with no confidence intervals or repeated seeds.
 
-**Next: Phase 7 — the proposed hybrid system** (BM25 + dense fusion, reranking, NLI, confidence), evaluated against all three baselines with the same NLI model.
+**Phase 6 — proposed system: code ready, NOT yet run on real data.**
+Baseline C's weak spot is verification, not retrieval (BM25 already reaches Recall@10 = 0.936), so the proposed system changes the judging step:
+- `retrieval/hybrid.py` — fuses BM25 and dense rankings with Reciprocal Rank Fusion
+- `verification/evidence_selection.py` — gives the NLI model only the best-matching sentences instead of the whole abstract
+- `experiments/run_proposed.py` — runs the full system or any ablation of it via flags
+
+38/38 tests pass (synthetic fixtures). There is no accuracy claim for this system yet; the first real run decides whether it helps. It may not.
+
+Fair comparison with Baseline C requires the same NLI model:
+```powershell
+python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --retrieval bm25 --limit 30   # quick check
+python -m experiments.run_proposed --nli-model facebook/bart-large-mnli                             # full proposed system
+python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --no-sentence-selection     # ablation
+```
+Not yet attempted: tuning the confidence threshold (must be tuned on train claims, not dev) and a science-specific NLI model.
 
 ## Setup
 ```bash

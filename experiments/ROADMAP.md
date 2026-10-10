@@ -9,8 +9,8 @@ not what was attempted.
 | 2/3 | Dataset pipeline + BM25 baseline (Baseline A) | **Done** — real results on dev set: Recall@1=0.702, Recall@5=0.899, Recall@10=0.936, MRR=0.782 (188/300 dev claims scored; 112 excluded as NEI). See README for full table. |
 | 4 | Dense retrieval baseline (Baseline B) | **Done** — real results: Recall@1=0.628, Recall@5=0.878, Recall@10=0.920, MRR=0.731 (all-MiniLM-L6-v2). **Underperforms BM25 on every metric** — reported honestly, see README for discussion. |
 | 5 | Retrieval + NLI (Baseline C) | **Done** — real results (bart-large-mnli, BM25 top-3): accuracy 0.590, macro-F1 0.450 (0.600 over classes with gold examples). See README. |
-| 6 | NLI verification module | **Folded into Phase 5** (verification/nli.py + verification/aggregate.py) |
-| 7 | Proposed hybrid pipeline (retrieval + rerank + NLI + conflict handling) | Not started |
+| 6 | Proposed system (hybrid retrieval + sentence-level evidence selection + NLI + conflict-aware aggregation) | **Code done, 38/38 tests; real run pending** |
+| 7 | (merged into Phase 6) | — |
 | 8 | Benchmark experiments, real metrics | Not started |
 | 9 | Ablation study | Not started |
 | 10 | Error analysis | Not started |
