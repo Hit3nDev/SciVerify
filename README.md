@@ -97,33 +97,36 @@ BM25 top-3 evidence, confidence threshold 0.5.
 - Retrieval numbers are identical to Baseline A because Baseline C reuses BM25.
 - This is a single run on the dev set with no confidence intervals or repeated seeds.
 
-**Phase 6 — proposed system: real result, and it is WORSE than Baseline C.**
-Same machine, same dev set, same NLI model (`bart-large-mnli`), 300 claims.
+**Phase 6 + ablation — real results. The proposed system does not beat Baseline C.**
+All four rows: same 300 dev claims, same NLI model (`bart-large-mnli`), top-3 documents, one run each.
 
-| | Baseline C (BM25, whole abstract) | Proposed (hybrid, 2 selected sentences) |
-|---|---|---|
-| Verification accuracy | **0.590** | 0.517 |
-| Macro-F1, classes with gold examples | **0.600** | 0.527 |
-| SUPPORTED recall / precision | 0.565 / 0.814 | 0.411 / 0.836 |
-| CONTRADICTED recall / precision | 0.656 / 0.452 | 0.703 / 0.402 |
-| UNKNOWN recall / precision | 0.580 / 0.619 | 0.527 / 0.509 |
-| Retrieval Recall@1 / @5 / @10 | 0.702 / 0.899 / 0.936 | 0.697 / 0.915 / 0.947 |
-| Retrieval MRR | 0.782 | 0.794 |
-| Time per claim | 6.7 s | 3.6 s |
+| Retrieval | Sentence selection | Correct (of 300) | Accuracy | Macro-F1 (gold classes) | Recall@10 | Sec/claim |
+|---|---|---|---|---|---|---|
+| BM25 | no (Baseline C) | 177 | **0.590** | **0.600** | 0.936 | 6.7 |
+| Hybrid | no | 174 | 0.580 | 0.592 | 0.947 | 11.8 |
+| Hybrid | yes, 2 sentences (proposed) | 155 | 0.517 | 0.527 | 0.947 | 3.6 |
+| BM25 | yes, 2 sentences | 149 | 0.497 | 0.509 | 0.936 | 3.7 |
 
-**What this shows, and what it does not:**
-- Hybrid retrieval gave a small gain at Recall@5/@10 and MRR and a tiny loss at Recall@1. These are single-run differences of about one point; no significance test was done.
-- Verification got worse: 22 fewer claims correct (155 vs 177). The main change is SUPPORTED recall falling from 0.565 to 0.411, so the model finds supporting evidence less often.
-- It is about 46% faster per claim, because the NLI model reads less text.
-- Two things changed at once (retrieval and evidence selection), so this result alone cannot say which one caused the drop. Retrieval got slightly better, which points at sentence selection, but that is a hypothesis, not a finding.
-- This system is therefore an implemented system, not an experimentally demonstrated improvement.
+**Evidence-selection diagnostic** (`eval_sentence_selection.py`, 209 claim/gold-document pairs): how often the chosen sentences include an annotated evidence sentence.
 
-**To isolate the cause (Phase 9 ablation starts here):**
-```powershell
-python -m experiments.eval_sentence_selection                                              # seconds, no models: does selection find the gold sentences?
-python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --retrieval bm25   # selection only vs Baseline C
-python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --no-sentence-selection   # retrieval only vs Baseline C
-```
+| Sentences kept (n) | Hit rate, my selection | Hit rate, first n sentences | Share of gold sentences found |
+|---|---|---|---|
+| 1 | 0.464 | 0.057 | 0.327 |
+| 2 | 0.679 | 0.148 | 0.509 |
+| 3 | 0.799 | 0.263 | 0.651 |
+| 4 | 0.880 | 0.411 | 0.735 |
+| 5 | 0.919 | 0.569 | 0.795 |
+
+**What the ablation shows:**
+- **Sentence selection with n=2 lowered verification accuracy in both matched comparisons:** BM25 0.590 to 0.497 (28 fewer claims correct) and hybrid 0.580 to 0.517 (19 fewer). The drop is mostly SUPPORTED recall (0.565 to 0.379 for BM25).
+- **A plausible mechanism, supported by the diagnostic:** with n=2 the chosen sentences contain an annotated evidence sentence only 68% of the time, so about a third of the time the NLI model never sees the sentence that supports the claim. The selection heuristic is far better than taking the first n sentences, but not good enough. This is consistent with the drop; it is not proof that it explains all of it.
+- **Hybrid retrieval raised retrieval metrics slightly** (Recall@5 0.899 to 0.915, Recall@10 0.936 to 0.947, MRR 0.782 to 0.794, Recall@1 0.702 to 0.697) **but did not improve verification:** 0.580 vs 0.590, which is 3 claims and well within what one run can vary by.
+- **Best configuration so far is still Baseline C.** No component tested has improved verification accuracy.
+- **Speed:** selection roughly halves NLI time per claim in direction, but wall-clock times come from separate laptop runs and the two no-selection rows differ by 75% for the same NLI workload, so treat the exact timings as noisy.
+
+**Limits of these results:** one run per configuration, no repeated seeds, no confidence intervals and no paired significance test (per-claim predictions were not saved). Differences of a few claims should not be read as real. The 9-point and 6-point drops from selection are larger but have not been tested statistically.
+
+**Not yet tried:** more sentences per document (the hit-rate curve suggests accuracy should rise toward the baseline as n grows), a tuned confidence threshold (must be tuned on train claims, not dev), and an NLI model trained on scientific claims.
 
 ## Setup
 ```bash

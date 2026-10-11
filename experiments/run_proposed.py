@@ -53,6 +53,7 @@ def main() -> None:
     ap.add_argument("--retrieval", choices=["bm25", "dense", "hybrid"])
     ap.add_argument("--no-sentence-selection", action="store_true")
     ap.add_argument("--nli-model")
+    ap.add_argument("--sentences-per-doc", type=int, help="override proposed.sentences_per_doc")
     ap.add_argument("--limit", type=int, help="only the first N dev claims (smoke test)")
     args = ap.parse_args()
 
@@ -64,6 +65,7 @@ def main() -> None:
     retrieval_kind = args.retrieval or pcfg["retrieval"]
     use_sel = pcfg["sentence_selection"] and not args.no_sentence_selection
     nli_model = args.nli_model or ncfg["model_name"]
+    n_sent = args.sentences_per_doc or pcfg["sentences_per_doc"]
     min_conf = vcfg["aggregation"]["min_confidence_for_verdict"]
 
     raw_dir = Path(data_cfg["paths"]["raw_dir"])
@@ -84,7 +86,7 @@ def main() -> None:
         for sd in docs:
             doc = corpus[sd.doc_id]
             if use_sel:
-                text, _ = select_sentences(claim.claim, doc, pcfg["sentences_per_doc"])
+                text, _ = select_sentences(claim.claim, doc, n_sent)
             else:
                 text = doc.title + " " + " ".join(doc.abstract)
             per_doc.append(DocumentVerdict(doc_id=sd.doc_id, prediction=nli_fn(claim.claim, text)))
@@ -102,7 +104,8 @@ def main() -> None:
 
     out = {
         "system": "proposed" if (retrieval_kind == "hybrid" and use_sel) else "ablation",
-        "retrieval": retrieval_kind, "sentence_selection": use_sel, "nli_model": nli_model,
+        "retrieval": retrieval_kind, "sentence_selection": use_sel,
+        "sentences_per_doc": n_sent if use_sel else None, "nli_model": nli_model,
         "num_claims": len(dev),
         "retrieval_metrics": {"recall_at_k": ret.recall_at_k, "mrr": ret.mrr},
         "verification": {
@@ -114,7 +117,7 @@ def main() -> None:
         "total_time_seconds": round(total, 1),
         "avg_latency_per_claim_ms": round(total / len(dev) * 1000, 1),
     }
-    tag = f"proposed_{retrieval_kind}_{'sel' if use_sel else 'nosel'}_{nli_model.split('/')[-1]}"
+    tag = f"proposed_{retrieval_kind}_{('sel' + (str(n_sent) if args.sentences_per_doc else '')) if use_sel else 'nosel'}_{nli_model.split('/')[-1]}"
     if args.limit:
         tag += f"_limit{args.limit}"
     Path("experiments/results").mkdir(parents=True, exist_ok=True)
