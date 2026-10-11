@@ -97,21 +97,33 @@ BM25 top-3 evidence, confidence threshold 0.5.
 - Retrieval numbers are identical to Baseline A because Baseline C reuses BM25.
 - This is a single run on the dev set with no confidence intervals or repeated seeds.
 
-**Phase 6 — proposed system: code ready, NOT yet run on real data.**
-Baseline C's weak spot is verification, not retrieval (BM25 already reaches Recall@10 = 0.936), so the proposed system changes the judging step:
-- `retrieval/hybrid.py` — fuses BM25 and dense rankings with Reciprocal Rank Fusion
-- `verification/evidence_selection.py` — gives the NLI model only the best-matching sentences instead of the whole abstract
-- `experiments/run_proposed.py` — runs the full system or any ablation of it via flags
+**Phase 6 — proposed system: real result, and it is WORSE than Baseline C.**
+Same machine, same dev set, same NLI model (`bart-large-mnli`), 300 claims.
 
-38/38 tests pass (synthetic fixtures). There is no accuracy claim for this system yet; the first real run decides whether it helps. It may not.
+| | Baseline C (BM25, whole abstract) | Proposed (hybrid, 2 selected sentences) |
+|---|---|---|
+| Verification accuracy | **0.590** | 0.517 |
+| Macro-F1, classes with gold examples | **0.600** | 0.527 |
+| SUPPORTED recall / precision | 0.565 / 0.814 | 0.411 / 0.836 |
+| CONTRADICTED recall / precision | 0.656 / 0.452 | 0.703 / 0.402 |
+| UNKNOWN recall / precision | 0.580 / 0.619 | 0.527 / 0.509 |
+| Retrieval Recall@1 / @5 / @10 | 0.702 / 0.899 / 0.936 | 0.697 / 0.915 / 0.947 |
+| Retrieval MRR | 0.782 | 0.794 |
+| Time per claim | 6.7 s | 3.6 s |
 
-Fair comparison with Baseline C requires the same NLI model:
+**What this shows, and what it does not:**
+- Hybrid retrieval gave a small gain at Recall@5/@10 and MRR and a tiny loss at Recall@1. These are single-run differences of about one point; no significance test was done.
+- Verification got worse: 22 fewer claims correct (155 vs 177). The main change is SUPPORTED recall falling from 0.565 to 0.411, so the model finds supporting evidence less often.
+- It is about 46% faster per claim, because the NLI model reads less text.
+- Two things changed at once (retrieval and evidence selection), so this result alone cannot say which one caused the drop. Retrieval got slightly better, which points at sentence selection, but that is a hypothesis, not a finding.
+- This system is therefore an implemented system, not an experimentally demonstrated improvement.
+
+**To isolate the cause (Phase 9 ablation starts here):**
 ```powershell
-python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --retrieval bm25 --limit 30   # quick check
-python -m experiments.run_proposed --nli-model facebook/bart-large-mnli                             # full proposed system
-python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --no-sentence-selection     # ablation
+python -m experiments.eval_sentence_selection                                              # seconds, no models: does selection find the gold sentences?
+python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --retrieval bm25   # selection only vs Baseline C
+python -m experiments.run_proposed --nli-model facebook/bart-large-mnli --no-sentence-selection   # retrieval only vs Baseline C
 ```
-Not yet attempted: tuning the confidence threshold (must be tuned on train claims, not dev) and a science-specific NLI model.
 
 ## Setup
 ```bash

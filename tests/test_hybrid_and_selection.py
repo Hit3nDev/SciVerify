@@ -66,3 +66,17 @@ def test_selection_n_larger_than_abstract_keeps_everything():
 def test_selection_rejects_bad_n():
     with pytest.raises(ValueError):
         select_sentences("x", _doc(), n=0)
+
+
+def test_evaluate_selection_hit_and_miss():
+    from data.schema import Claim, RawLabel, Rationale
+    from experiments.eval_sentence_selection import evaluate_selection
+
+    corpus = {1: _doc()}
+    hit = Claim(id=1, claim="Exercise improves memory in older adults",
+                evidence={"1": [Rationale(sentences=[1], label=RawLabel.SUPPORT)]}, cited_doc_ids=[1])
+    miss = Claim(id=2, claim="Exercise improves memory in older adults",
+                 evidence={"1": [Rationale(sentences=[2], label=RawLabel.SUPPORT)]}, cited_doc_ids=[1])
+    res = evaluate_selection([hit, miss], corpus, [2])["2"]
+    assert res["pairs"] == 2
+    assert res["selected_hit_rate"] == 0.5   # selects sentences 1 and 3: hits the first, misses the second
