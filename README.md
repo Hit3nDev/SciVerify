@@ -106,6 +106,8 @@ All four rows: same 300 dev claims, same NLI model (`bart-large-mnli`), top-3 do
 | Hybrid | no | 174 | 0.580 | 0.592 | 0.947 | 11.8 |
 | Hybrid | yes, 2 sentences (proposed) | 155 | 0.517 | 0.527 | 0.947 | 3.6 |
 | BM25 | yes, 2 sentences | 149 | 0.497 | 0.509 | 0.936 | 3.7 |
+| BM25 | yes, 4 sentences | 169 | 0.563 | 0.572 | 0.936 | 9.2 |
+| BM25 | yes, 5 sentences | 167 | 0.557 | 0.568 | 0.936 | 9.2 |
 
 **Evidence-selection diagnostic** (`eval_sentence_selection.py`, 209 claim/gold-document pairs): how often the chosen sentences include an annotated evidence sentence.
 
@@ -126,7 +128,13 @@ All four rows: same 300 dev claims, same NLI model (`bart-large-mnli`), top-3 do
 
 **Limits of these results:** one run per configuration, no repeated seeds, no confidence intervals and no paired significance test (per-claim predictions were not saved). Differences of a few claims should not be read as real. The 9-point and 6-point drops from selection are larger but have not been tested statistically.
 
-**Not yet tried:** more sentences per document (the hit-rate curve suggests accuracy should rise toward the baseline as n grows), a tuned confidence threshold (must be tuned on train claims, not dev), and an NLI model trained on scientific claims.
+**Sentences-per-document sweep (BM25, same setup):** accuracy was 0.497 at n=2, 0.563 at n=4, 0.557 at n=5, and 0.590 with the whole abstract. It rises toward the baseline as more context is kept and never exceeds it. The 4-vs-5 difference is 2 claims, i.e. noise. So at no setting tested does selection beat feeding the whole abstract.
+
+**Timing caveat (important):** the n=4 and n=5 runs took 9.2 s per claim, slower than the whole-abstract baseline (6.7 s) even though they feed the model less text, and the n=4 log shows a stall of about 7 minutes between claims 70 and 80. Those runs were on a laptop in different sessions, so wall-clock time here reflects machine conditions, not the method. **No speed claim for sentence selection is supported by this data.** A fair speed comparison needs a controlled measurement (same session, repeated, timing only the NLI calls).
+
+**New tooling (Phase 6b), not yet run on real data:** `run_proposed.py` now saves every claim's per-document NLI outputs (`*_predictions.jsonl`) and accepts `--split train`. `experiments/sweep_threshold.py` then picks the confidence threshold on the train claims and reports it on dev, so a tuned threshold can be tested in seconds instead of a 45-minute rerun. The saved predictions are also what error analysis and a paired significance test need. No result is claimed from this yet. Commands are in the docstring of `sweep_threshold.py`.
+
+**Not yet tried:** a tuned confidence threshold (must be tuned on train claims, not dev), and an NLI model trained on scientific claims.
 
 ## Setup
 ```bash

@@ -54,7 +54,9 @@ def main() -> None:
     ap.add_argument("--no-sentence-selection", action="store_true")
     ap.add_argument("--nli-model")
     ap.add_argument("--sentences-per-doc", type=int, help="override proposed.sentences_per_doc")
-    ap.add_argument("--limit", type=int, help="only the first N dev claims (smoke test)")
+    ap.add_argument("--limit", type=int, help="only the first N claims (smoke test)")
+    ap.add_argument("--split", choices=["dev", "train"], default="dev",
+                    help="train is used to tune the confidence threshold (never tune on dev)")
     args = ap.parse_args()
 
     data_cfg = load_config("configs/data.yaml")
@@ -70,7 +72,8 @@ def main() -> None:
 
     raw_dir = Path(data_cfg["paths"]["raw_dir"])
     corpus = load_corpus(raw_dir, data_cfg["paths"]["corpus_file"])
-    dev = load_claims(raw_dir, data_cfg["paths"]["claims_dev_file"], has_labels=True)
+    claims_file = data_cfg["paths"]["claims_dev_file" if args.split == "dev" else "claims_train_file"]
+    dev = load_claims(raw_dir, claims_file, has_labels=True)
     if args.limit:
         dev = dev[: args.limit]
     print(f"retrieval={retrieval_kind} sentence_selection={use_sel} nli={nli_model} claims={len(dev)}")
@@ -78,7 +81,7 @@ def main() -> None:
     retriever = build_retriever(retrieval_kind, corpus, rcfg)
     nli_fn = get_nli_fn(nli_model, ncfg["label_map"])
 
-    gold, pred = [], []
+    gold, pred, rows = [], [], []
     t0 = time.perf_counter()
     for i, claim in enumerate(dev, start=1):
         docs = retriever.retrieve(claim.claim, top_k=pcfg["evidence_top_k"])
@@ -91,7 +94,16 @@ def main() -> None:
                 text = doc.title + " " + " ".join(doc.abstract)
             per_doc.append(DocumentVerdict(doc_id=sd.doc_id, prediction=nli_fn(claim.claim, text)))
         gold.append(claim.gold_verdict())
-        pred.append(aggregate(per_doc, min_confidence_for_verdict=min_conf).verdict)
+        result = aggregate(per_doc, min_confidence_for_verdict=min_conf)
+        pred.append(result.verdict)
+        rows.append({
+            "claim_id": claim.id, "claim": claim.claim,
+            "gold": claim.gold_verdict().value, "pred": result.verdict.value,
+            "confidence": result.confidence,
+            "docs": [{"doc_id": dv.doc_id, "nli": dv.prediction.raw_nli_label,
+                      "label": dv.prediction.mapped_label.value if dv.prediction.mapped_label else None,
+                      "score": dv.prediction.score} for dv in per_doc],
+        })
         if i % 10 == 0 or i == len(dev):
             el = time.perf_counter() - t0
             print(f"  [{i}/{len(dev)}] {el:.0f}s elapsed, eta {el / i * (len(dev) - i):.0f}s", flush=True)
@@ -118,11 +130,16 @@ def main() -> None:
         "avg_latency_per_claim_ms": round(total / len(dev) * 1000, 1),
     }
     tag = f"proposed_{retrieval_kind}_{('sel' + (str(n_sent) if args.sentences_per_doc else '')) if use_sel else 'nosel'}_{nli_model.split('/')[-1]}"
+    if args.split == "train":
+        tag += "_train"
     if args.limit:
         tag += f"_limit{args.limit}"
     Path("experiments/results").mkdir(parents=True, exist_ok=True)
     path = Path("experiments/results") / f"{tag}.json"
     path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    pred_path = Path("experiments/results") / f"{tag}_predictions.jsonl"
+    pred_path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    print(f"per-claim predictions saved to {pred_path}")
     print(f"\nwritten {path}\n{json.dumps(out, indent=2)}")
 
 
