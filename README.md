@@ -86,7 +86,7 @@ BM25 top-3 evidence, confidence threshold 0.5.
 | Accuracy | 0.590 (177/300) |
 | Macro-F1, all four labels | 0.450 |
 | Macro-F1, labels with gold examples only | 0.600 (derived) |
-| Total time / per claim | 2,006 s / 6.7 s |
+| Total time / per claim | not reliable (see timing note) |
 
 **How to read this honestly:**
 - The two macro-F1 numbers differ only because the dev set has no CONFLICTING gold claims, so that class can only score 0. 0.600 is the fairer summary of verification quality; 0.450 is reported too so nothing is hidden. The 0.600 figure was derived afterwards from the per-class F1s, not printed by the run.
@@ -100,14 +100,14 @@ BM25 top-3 evidence, confidence threshold 0.5.
 **Phase 6 + ablation — real results. The proposed system does not beat Baseline C.**
 All four rows: same 300 dev claims, same NLI model (`bart-large-mnli`), top-3 documents, one run each.
 
-| Retrieval | Sentence selection | Correct (of 300) | Accuracy | Macro-F1 (gold classes) | Recall@10 | Sec/claim |
-|---|---|---|---|---|---|---|
-| BM25 | no (Baseline C) | 177 | **0.590** | **0.600** | 0.936 | 6.7 |
-| Hybrid | no | 174 | 0.580 | 0.592 | 0.947 | 11.8 |
-| Hybrid | yes, 2 sentences (proposed) | 155 | 0.517 | 0.527 | 0.947 | 3.6 |
-| BM25 | yes, 2 sentences | 149 | 0.497 | 0.509 | 0.936 | 3.7 |
-| BM25 | yes, 4 sentences | 169 | 0.563 | 0.572 | 0.936 | 9.2 |
-| BM25 | yes, 5 sentences | 167 | 0.557 | 0.568 | 0.936 | 9.2 |
+| Retrieval | Sentence selection | Correct (of 300) | Accuracy | Macro-F1 (gold classes) | Recall@10 |
+|---|---|---|---|---|---|
+| BM25 | no (Baseline C) | 177 | **0.590** | **0.600** | 0.936 |
+| Hybrid | no | 174 | 0.580 | 0.592 | 0.947 |
+| Hybrid | yes, 2 sentences (proposed) | 155 | 0.517 | 0.527 | 0.947 |
+| BM25 | yes, 2 sentences | 149 | 0.497 | 0.509 | 0.936 |
+| BM25 | yes, 4 sentences | 169 | 0.563 | 0.572 | 0.936 |
+| BM25 | yes, 5 sentences | 167 | 0.557 | 0.568 | 0.936 |
 
 **Evidence-selection diagnostic** (`eval_sentence_selection.py`, 209 claim/gold-document pairs): how often the chosen sentences include an annotated evidence sentence.
 
@@ -124,17 +124,37 @@ All four rows: same 300 dev claims, same NLI model (`bart-large-mnli`), top-3 do
 - **A plausible mechanism, supported by the diagnostic:** with n=2 the chosen sentences contain an annotated evidence sentence only 68% of the time, so about a third of the time the NLI model never sees the sentence that supports the claim. The selection heuristic is far better than taking the first n sentences, but not good enough. This is consistent with the drop; it is not proof that it explains all of it.
 - **Hybrid retrieval raised retrieval metrics slightly** (Recall@5 0.899 to 0.915, Recall@10 0.936 to 0.947, MRR 0.782 to 0.794, Recall@1 0.702 to 0.697) **but did not improve verification:** 0.580 vs 0.590, which is 3 claims and well within what one run can vary by.
 - **Best configuration so far is still Baseline C.** No component tested has improved verification accuracy.
-- **Speed:** selection roughly halves NLI time per claim in direction, but wall-clock times come from separate laptop runs and the two no-selection rows differ by 75% for the same NLI workload, so treat the exact timings as noisy.
+- **Speed:** no speed claim is made; the available timings are not trustworthy (see the timing note below).
 
 **Limits of these results:** one run per configuration, no repeated seeds, no confidence intervals and no paired significance test (per-claim predictions were not saved). Differences of a few claims should not be read as real. The 9-point and 6-point drops from selection are larger but have not been tested statistically.
 
 **Sentences-per-document sweep (BM25, same setup):** accuracy was 0.497 at n=2, 0.563 at n=4, 0.557 at n=5, and 0.590 with the whole abstract. It rises toward the baseline as more context is kept and never exceeds it. The 4-vs-5 difference is 2 claims, i.e. noise. So at no setting tested does selection beat feeding the whole abstract.
 
-**Timing caveat (important):** the n=4 and n=5 runs took 9.2 s per claim, slower than the whole-abstract baseline (6.7 s) even though they feed the model less text, and the n=4 log shows a stall of about 7 minutes between claims 70 and 80. Those runs were on a laptop in different sessions, so wall-clock time here reflects machine conditions, not the method. **No speed claim for sentence selection is supported by this data.** A fair speed comparison needs a controlled measurement (same session, repeated, timing only the NLI calls).
+**Timing note (important):** wall-clock timings from these runs are NOT valid and are not used anywhere in this project's conclusions. The n=4 and n=5 runs were slower than the whole-abstract baseline despite reading less text; the train run's log jumps from 5,395 s to 32,678 s and later to 61,674 s with no work in between (the laptop was suspended); and the identical Baseline C configuration took 6.7 s/claim in one run and 41.7 s/claim in another. Accuracy and F1 are unaffected. Inference latency must be re-measured under controlled conditions (median per-call time, same session) before it is reported.
 
-**New tooling (Phase 6b), not yet run on real data:** `run_proposed.py` now saves every claim's per-document NLI outputs (`*_predictions.jsonl`) and accepts `--split train`. `experiments/sweep_threshold.py` then picks the confidence threshold on the train claims and reports it on dev, so a tuned threshold can be tested in seconds instead of a 45-minute rerun. The saved predictions are also what error analysis and a paired significance test need. No result is claimed from this yet. Commands are in the docstring of `sweep_threshold.py`.
+**Confidence-threshold tuning: no gain (real result).** The NLI outputs were saved for all 809 train and 300 dev claims (BM25, whole abstract, `bart-large-mnli`), the threshold was chosen on train only, then applied to dev once.
 
-**Not yet tried:** a tuned confidence threshold (must be tuned on train claims, not dev), and an NLI model trained on scientific claims.
+| Threshold | Train acc | Train macro-F1 | Dev acc | Dev macro-F1 |
+|---|---|---|---|---|
+| 0.40 | 0.557 | 0.577 | 0.580 | 0.592 |
+| 0.50 (default) | 0.564 | 0.580 | 0.590 | 0.600 |
+| 0.60 | 0.582 | 0.589 | 0.593 | 0.593 |
+| **0.70 (chosen on train)** | 0.596 | 0.593 | 0.587 | 0.580 |
+| 0.80 | 0.587 | 0.578 | 0.607 | 0.592 |
+| 0.85 | 0.582 | 0.571 | 0.593 | 0.576 |
+| 0.90 | 0.572 | 0.554 | 0.540 | 0.516 |
+| 0.95 | 0.549 | 0.515 | 0.513 | 0.477 |
+| 0.98 | 0.501 | 0.442 | 0.487 | 0.428 |
+
+- The train-chosen threshold (0.70) gives dev accuracy 0.587 vs 0.590 at the default: no improvement. The small in-sample gain on train (macro-F1 0.580 to 0.593) did not transfer.
+- Accuracy is flat (about 0.56 to 0.61) for thresholds 0.4 to 0.85 and only falls at 0.90 and above, where too many claims become UNKNOWN. The dev peak at 0.80 (0.607) is not used: choosing it would be tuning on dev, and it is within noise of its neighbours.
+- So the cutoff is not what limits accuracy. The limit is the NLI model's ability to tell evidence from related-but-non-evidence text, and the decision rule built on top of it.
+- Baseline C on the 809 train claims scores 0.564 accuracy / 0.580 macro-F1, slightly below the dev figures (0.590 / 0.600). The larger sample is the better estimate of its true accuracy; the dev set (300 claims, standard error roughly 3 points) is small, so dev differences of a few points between configurations should not be over-read.
+- Reproducibility: re-running Baseline C on dev reproduced 0.590 exactly.
+
+**Error analysis tooling (Phase 10), not yet run on real data:** `experiments/error_analysis.py` reads the saved predictions and the dataset, classifies every error (retrieval miss, polarity flip, evidence retrieved but not recognised, verdict given when no gold evidence exists, spurious conflict), checks numeric / multi-evidence / long claims, and writes a CSV with a blank `manual_category` column for hand labelling the categories that cannot be detected automatically (terminology mismatch, ambiguous claim, misleading evidence).
+
+**Not yet tried:** an NLI model trained on scientific claims (for example fine-tuned on the SciFact train rationales), and a different decision rule for combining per-document judgements.
 
 ## Setup
 ```bash

@@ -11,9 +11,9 @@ not what was attempted.
 | 5 | Retrieval + NLI (Baseline C) | **Done** — real results (bart-large-mnli, BM25 top-3): accuracy 0.590, macro-F1 0.450 (0.600 over classes with gold examples). See README. |
 | 6 | Proposed system (hybrid + sentence selection + NLI + conflict-aware aggregation) and first ablation | **Done, real results: proposed system 0.517 accuracy vs Baseline C 0.590. Ablation shows sentence selection (n=2) is the cause of the drop; hybrid retrieval gives only a small retrieval gain.** |
 | 7 | (merged into Phase 6) | — |
-| 8 | Benchmark experiments, real metrics | Not started |
-| 9 | Ablation study | Not started |
-| 10 | Error analysis | Not started |
+| 8 | Full benchmark experiments | **Done for the current systems** (A, B, C, hybrid, sentence-selection variants, threshold sweep). Timings are invalid and must be re-measured. |
+| 9 | Ablation study | **Done for the components built:** sentence selection hurts, hybrid retrieval gives a small retrieval gain only, threshold tuning gives nothing. Single runs, no significance test. |
+| 10 | Error analysis | **Tool built and tested on synthetic data (`experiments/error_analysis.py`); not yet run on real predictions.** |
 | 11 | Streamlit UI + FastAPI backend | Not started |
 | 12 | Docker + full test suite | Not started |
 | 13 | Research report with real results | Not started |
