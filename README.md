@@ -201,6 +201,19 @@ API endpoints: `POST /verify` (optional `top_k`, `min_confidence`), `POST /verif
 
 **Status:** covered by 94 passing tests that use stand-in models. The real-model path was also run end to end through the web app. Latency is not reported (timings were invalid).
 
+### Telegram bot
+
+`bots/telegram_bot.py` lets anyone check a claim by messaging a Telegram bot. It holds no model and calls the API above.
+
+1. In Telegram, message **@BotFather**, send `/newbot`, and copy the token it gives you.
+2. Create `.env` in the project folder (it is git-ignored) containing `TELEGRAM_BOT_TOKEN=<your token>`.
+3. Start the API (`uvicorn api.main:app --port 8000`), then in a second terminal run `python -m bots.telegram_bot`.
+4. Open your bot in Telegram and send `/start`.
+
+What it does: any sentence you send is checked, with live progress ("found 3 papers, reading 2/3"). The answer comes back in plain language: what the verdict means, how sure the bot is (as a bar, using calibrated confidence when it is available), the papers that agree or disagree with their key sentence quoted, and a "keep in mind" note. Buttons under each answer show **All papers**, **Why this verdict?** (the four-step rule applied to this claim) and **Check the opposite** (the opposite-claim test). It gives friendly tips for questions, very short or very long messages, and personal claims.
+
+Commands: `/example` (a labelled dataset claim, with whether the bot got it right), `/quiz` (guess first and keep a score), `/verdicts`, `/how`, `/judge` (switch the NLI model), `/about` (limits and privacy), `/help`. Optional settings: `SCIVERIFY_API` (default `http://127.0.0.1:8000`) and `SCIVERIFY_WEB_URL` (a public address for the web app; this adds an *Open in the web app* button). The bot uses polling, so it needs no public URL. Tested in `tests/test_telegram_bot.py` (message text, and the client against the real API with stand-in models).
+
 ## Setup
 ```bash
 python -m venv .venv && source .venv/bin/activate

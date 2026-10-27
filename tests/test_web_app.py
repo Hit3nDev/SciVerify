@@ -186,3 +186,70 @@ def test_web_page_and_assets_are_served(client):
     assert page.status_code == 200 and "SciVerify" in page.text
     for asset in ["/static/app.js", "/static/charts.js", "/static/styles.css"]:
         assert client.get(asset).status_code == 200
+
+
+# ------------------------------------------------------------------ several judges, counter-claims
+JUDGES = [{"key": "a", "path": "fake/a", "name": "Judge A", "description": "", "calibrated": False},
+          {"key": "b", "path": "fake/b", "name": "Judge B", "description": "", "calibrated": True}]
+
+
+def contrarian_nli(claim, text):
+    """Judge B: says SUPPORT to everything that mentions memory, including the opposite claim."""
+    return NliPrediction("entailment", RawLabel.SUPPORT, 0.9, {"entailment": 0.9}, calibrated_score=0.6)
+
+
+def honest_nli(claim, text):
+    """Judge A: supports 'improves', contradicts 'does not improve' / 'worsens'."""
+    negated = "not" in claim or "worsen" in claim
+    return (NliPrediction("contradiction", RawLabel.CONTRADICT, 0.8) if negated
+            else NliPrediction("entailment", RawLabel.SUPPORT, 0.95))
+
+
+@pytest.fixture()
+def multi():
+    built = []
+
+    def factory(key):
+        built.append(key)
+        return ClaimVerifier(CORPUS, FakeRetriever([1]), honest_nli if key == "a" else contrarian_nli,
+                             judge_name=f"Judge {key.upper()}")
+
+    c = TestClient(create_app(factory, lambda: [], lambda: {}, judges=JUDGES))
+    c.built = built
+    return c
+
+
+def test_judges_endpoint_and_model_selection(multi):
+    j = multi.get("/judges").json()
+    assert j["default"] == "a" and [x["key"] for x in j["judges"]] == ["a", "b"]
+    assert all(x["ready"] is False for x in j["judges"])
+    a = multi.post("/verify", json={"claim": "Exercise improves memory"}).json()
+    b = multi.post("/verify", json={"claim": "Exercise improves memory", "model": "b"}).json()
+    assert a["judge"] == "Judge A" and a["judge_key"] == "a" and a["confidence_calibrated"] is None
+    assert b["judge"] == "Judge B" and b["confidence_calibrated"] == 0.6 and b["cached"] is False
+    assert multi.built == ["a", "b"]
+    assert [x["ready"] for x in multi.get("/judges").json()["judges"]] == [True, True]
+    assert multi.post("/verify", json={"claim": "x", "model": "nope"}).status_code == 422
+
+
+def test_cache_is_per_judge(multi):
+    multi.post("/verify", json={"claim": "Exercise improves memory", "model": "a"})
+    assert multi.post("/verify", json={"claim": "Exercise improves memory", "model": "b"}).json()["cached"] is False
+    assert multi.post("/verify", json={"claim": "Exercise improves memory", "model": "a"}).json()["cached"] is True
+
+
+def test_counterclaim_flags_a_judge_that_agrees_with_both_sides(multi):
+    good = multi.post("/counterclaim", json={"claim": "Exercise improves memory", "model": "a"}).json()
+    assert good["counter_claim"] == "Exercise worsens memory" and good["method"] == "antonym"
+    assert (good["verdict"], good["counter_verdict"], good["status"]) == ("SUPPORTED", "CONTRADICTED", "consistent")
+    bad = multi.post("/counterclaim", json={"claim": "Exercise improves memory", "model": "b"}).json()
+    assert (bad["verdict"], bad["counter_verdict"], bad["status"]) == ("SUPPORTED", "SUPPORTED", "inconsistent")
+    assert "do not trust" in bad["note"] and bad["counter_evidence"][0]["doc_id"] == 1
+    assert multi.post("/counterclaim", json={"claim": "   "}).status_code == 422
+
+
+def test_warmup_and_stream_accept_a_judge(multi):
+    assert multi.post("/warmup", params={"model": "b"}).json()["judge"] == "b"
+    events = ndjson(multi.post("/verify/stream", json={"claim": "Exercise improves memory", "model": "b"}).text)
+    assert events[-1]["result"]["judge_key"] == "b"
+    assert multi.post("/warmup", params={"model": "zzz"}).status_code == 422

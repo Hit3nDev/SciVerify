@@ -17,7 +17,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Callable, Dict, Iterator, List, Optional, Tuple
 
-from data.schema import CorpusDocument, Verdict
+from data.schema import CorpusDocument, RawLabel, Verdict
 from retrieval.tokenize import simple_lowercase_alnum
 from verification.aggregate import DocumentVerdict, aggregate
 from verification.evidence_selection import select_sentences
@@ -46,6 +46,7 @@ class EvidenceItem:
     probabilities: Dict[str, float] = field(default_factory=dict)  # all NLI class probabilities
     sentences: List[str] = field(default_factory=list)              # the full abstract
     highlighted: List[int] = field(default_factory=list)            # indices of the passage sentences
+    calibrated_score: Optional[float] = None                        # nli_score after temperature scaling
 
 
 @dataclass
@@ -59,6 +60,8 @@ class VerifyResponse:
     caveat: str = CAVEAT
     claim_terms: List[str] = field(default_factory=list)   # claim words worth highlighting
     settings: Dict[str, float] = field(default_factory=dict)
+    confidence_calibrated: Optional[float] = None          # same rule as confidence, on calibrated scores
+    judge: str = ""                                        # which NLI model produced this
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -76,12 +79,35 @@ def claim_terms(text: str) -> List[str]:
     return terms
 
 
+def calibrated_confidence(verdict: str, per_doc: List[DocumentVerdict], threshold: float) -> Optional[float]:
+    """The aggregation rule's confidence, recomputed on calibrated scores: the mean calibrated
+    score of the papers that counted for the verdict (min of the two sides for CONFLICTING).
+    Which papers count is still decided by the raw score, exactly as in `aggregate`."""
+    def side(label: RawLabel) -> Optional[float]:
+        vals = [dv.prediction.calibrated_score for dv in per_doc
+                if dv.prediction.mapped_label == label and dv.prediction.score >= threshold]
+        if not vals or any(v is None for v in vals):
+            return None
+        return sum(vals) / len(vals)
+
+    sup, con = side(RawLabel.SUPPORT), side(RawLabel.CONTRADICT)
+    if verdict == Verdict.SUPPORTED.value:
+        return sup
+    if verdict == Verdict.CONTRADICTED.value:
+        return con
+    if verdict == Verdict.CONFLICTING.value and sup is not None and con is not None:
+        return min(sup, con)
+    return None
+
+
 class ClaimVerifier:
     def __init__(self, corpus: Dict[int, CorpusDocument], retriever,
                  nli_fn: Callable[[str, str], NliPrediction],
-                 evidence_top_k: int = 3, min_confidence: float = 0.5, display_sentences: int = 2) -> None:
+                 evidence_top_k: int = 3, min_confidence: float = 0.5, display_sentences: int = 2,
+                 judge_name: str = "") -> None:
         self.corpus, self.retriever, self.nli_fn = corpus, retriever, nli_fn
         self.top_k, self.min_confidence, self.display_sentences = evidence_top_k, min_confidence, display_sentences
+        self.judge_name = judge_name
         # One model, many web requests: run NLI calls one at a time instead of fighting over the CPU.
         self._nli_lock = threading.Lock()
 
@@ -123,7 +149,8 @@ class ClaimVerifier:
                 claim=text, verdict=Verdict.UNKNOWN.value, confidence=0.0,
                 explanation=("No paper in the corpus shares meaningful vocabulary with this claim, "
                              "so there is no evidence to judge it."),
-                elapsed_seconds=round(time.perf_counter() - t0, 2), claim_terms=terms, settings=settings)
+                elapsed_seconds=round(time.perf_counter() - t0, 2), claim_terms=terms, settings=settings,
+                judge=self.judge_name)
             return
 
         per_doc: List[DocumentVerdict] = []
@@ -139,7 +166,8 @@ class ClaimVerifier:
                                 nli_label=pred.raw_nli_label, nli_score=round(pred.score, 3),
                                 judgement=judgement, passage=passage,
                                 probabilities={lbl: round(p, 4) for lbl, p in pred.probs.items()},
-                                sentences=list(doc.abstract), highlighted=chosen)
+                                sentences=list(doc.abstract), highlighted=chosen,
+                                calibrated_score=None if pred.calibrated_score is None else round(pred.calibrated_score, 3))
             items.append(item)
             yield "judged", item
 
@@ -147,10 +175,13 @@ class ClaimVerifier:
         explanation = agg.explanation
         if truncated:
             explanation += f" (The claim was longer than {MAX_CLAIM_CHARS} characters and was shortened.)"
+        cal = calibrated_confidence(agg.verdict.value, per_doc, threshold)
         yield "done", VerifyResponse(claim=text, verdict=agg.verdict.value, confidence=round(agg.confidence, 3),
                                      explanation=explanation, evidence=items,
                                      elapsed_seconds=round(time.perf_counter() - t0, 2),
-                                     claim_terms=terms, settings=settings)
+                                     claim_terms=terms, settings=settings,
+                                     confidence_calibrated=None if cal is None else round(cal, 3),
+                                     judge=self.judge_name)
 
     def explain_sentences(self, claim: str, doc_id: int) -> List[dict]:
         """Judge every sentence of one abstract on its own, to locate the sentences that decide it.

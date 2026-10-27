@@ -252,6 +252,40 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .j-NEUTRAL { color: var(--NEUTRAL); background: var(--NEUTRAL-bg); }
 .chip.gold { color: var(--accent); background: transparent; border-style: dashed; }
 
+.judge-pick { display: inline-flex; align-items: center; gap: 8px; font: 500 13px var(--sans); color: var(--muted); }
+.judge-pick select {
+  height: 40px; max-width: 260px; border: 1px solid var(--rule-strong); border-radius: var(--radius);
+  background: var(--panel); color: var(--ink); font: 500 13.5px var(--sans); padding: 0 8px; cursor: pointer;
+}
+
+/* extras under the verdict: opposite-claim check and judge comparison */
+.extras { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.extras:empty { display: none; }
+.extra { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 22px; animation: rise .3s var(--ease); }
+.extra-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.extra-head h3 { font-size: 19px; }
+.extra-head .link-btn { margin-left: auto; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font: 600 12px var(--sans); letter-spacing: .04em; border: 1px solid currentColor; }
+.badge.consistent { color: var(--SUPPORTED); background: var(--SUPPORTED-bg); }
+.badge.inconsistent { color: var(--CONTRADICTED); background: var(--CONTRADICTED-bg); }
+.badge.inconclusive { color: var(--UNKNOWN); background: var(--UNKNOWN-bg); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pair-side { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; background: var(--paper); }
+.pair-side .eyebrow { margin-bottom: 6px; }
+.pair-side q { font: 16px/1.4 var(--serif); quotes: none; display: block; margin-bottom: 8px; }
+.pair-side q mark { background: var(--marker-soft); border-bottom: 2px solid var(--marker); color: inherit; padding: 0 1px; }
+.pair-side .mini { display: flex; align-items: center; gap: 8px; font: 12.5px var(--mono); color: var(--muted); }
+.extra .note { margin-top: 12px; }
+.extra .note.warn { color: var(--CONTRADICTED); font-weight: 500; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.compare-table th { text-align: left; font: 600 10.5px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--rule); }
+.compare-table td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.compare-table tr:last-child td { border-bottom: 0; }
+.compare-table tr.current td:first-child::after { content: " (shown above)"; color: var(--muted); font-size: 12px; }
+.compare-table .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.compare-table .disagree td:first-child { box-shadow: inset 3px 0 0 var(--CONFLICTING); }
+.judge-name { font-size: 13px !important; font-family: var(--sans) !important; font-weight: 600 !important; max-width: 220px; }
+
 /* ------------------------------------------------------------------ progress */
 .progress {
   margin-top: 22px; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px 14px;
@@ -535,6 +569,8 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
   #claim { font-size: 20px; }
   .composer-actions .btn-ghost { margin-left: 0; }
   .settings { grid-template-columns: 1fr; }
+  .pair { grid-template-columns: 1fr; }
+  .judge-pick select { max-width: 100%; }
   .verdict-panel { grid-template-columns: 1fr; gap: 16px; padding: 20px; }
   .stamp { justify-self: start; font-size: 24px; }
   .stations { grid-template-columns: 1fr 1fr; row-gap: 16px; }

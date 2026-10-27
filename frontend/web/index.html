@@ -75,6 +75,10 @@
                 <option value="UNKNOWN">no evidence</option>
               </select>
             </div>
+            <label class="judge-pick" title="Which language model reads the papers">
+              <span>Judge</span>
+              <select id="judge" aria-label="Which judge model reads the papers"></select>
+            </label>
             <button class="btn btn-ghost" id="settings-btn" type="button" aria-expanded="false" aria-controls="settings">
               <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
               Settings
@@ -195,6 +199,25 @@
       <li><span class="pipe-n">3</span><h3>Weigh</h3><p>Papers only count if the model is confident. Support only gives <b>SUPPORTED</b>; contradiction only gives <b>CONTRADICTED</b>; both give <b>CONFLICTING</b>; neither gives <b>UNKNOWN</b>.</p></li>
       <li><span class="pipe-n">4</span><h3>Show</h3><p>Every paper used is listed with its search score, the model's full probability split, and the sentences that best match the claim.</p></li>
     </ol>
+
+    <div class="two-col" style="margin-bottom:18px">
+      <div class="panel">
+        <h2>Three judges</h2>
+        <p class="sub">Step 2 can be done by different models. The switcher in Verify picks one.</p>
+        <ul class="plain">
+          <li><b>General judge</b> (bart-large-mnli, 407M parameters): trained on everyday English inference, never saw a scientific claim. All the original results were measured with it.</li>
+          <li><b>Science-trained judge</b> (MiniLM, 82M): the small model after fine-tuning on the 809 training claims and their annotated evidence (<code>experiments/finetune_nli.py</code>). The dev set was not used for training or model selection.</li>
+          <li><b>Small general judge</b> (MiniLM, 82M): the same model before fine-tuning, so the effect of training alone is visible.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Two honesty checks</h2>
+        <ul class="plain">
+          <li><b>Calibrated confidence.</b> A model's probability is not automatically the chance it is right. One number (a temperature) is fitted on the training split so that "80%" means right about 80% of the time (<code>experiments/calibrate.py</code>). The verdict never changes; only the number does. Both raw and calibrated values are shown.</li>
+          <li><b>Opposite-claim check.</b> The claim's opposite is built with a few readable rules (swap a direction word, or insert / remove "not") and verified too. A judge that supports both a claim and its opposite is reacting to words, not meaning, and the verdict is flagged as unreliable (<code>verification/counterclaim.py</code>).</li>
+        </ul>
+      </div>
+    </div>
 
     <div class="two-col">
       <div class="panel">

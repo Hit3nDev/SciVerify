@@ -48,7 +48,23 @@ proposed:
 
 demo:
   # The demo/API run the best system found in the evaluation (Baseline C): BM25 + whole-abstract NLI.
-  # The model is facebook/bart-large-mnli because ALL reported accuracy numbers were measured with it.
-  # The lighter model in nli.model_name above was never evaluated on SciFact, so it is not used here.
+  # The default model is facebook/bart-large-mnli because the original accuracy numbers were measured with it.
   nli_model: "facebook/bart-large-mnli"
   evidence_top_k: 3
+  # Every judge the web app can switch between. The first entry is the default. `path` is a hub id or a
+  # local directory; a judge whose directory does not exist (not trained yet) is simply not offered.
+  judges:
+    - key: bart
+      path: "facebook/bart-large-mnli"
+      name: "General judge (bart-large-mnli)"
+      description: "407M parameters, trained on everyday English inference, never saw a scientific claim."
+    - key: scifact
+      path: "models/nli-scifact"
+      name: "Science-trained judge (MiniLM, fine-tuned)"
+      description: "82M parameters, fine-tuned on SciFact's 809 training claims by experiments/finetune_nli.py."
+    - key: minilm
+      path: "cross-encoder/nli-MiniLM2-L6-H768"
+      name: "Small general judge (MiniLM, untrained)"
+      description: "The same 82M model before fine-tuning, to show what the training changed."
+  # Fitted temperatures per judge (experiments/calibrate.py writes this file). Missing = no calibrated score.
+  calibration_file: "models/calibration.json"

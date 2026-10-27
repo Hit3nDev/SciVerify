@@ -14,3 +14,7 @@ notebooks/.ipynb_checkpoints/
 experiments/results/*_predictions.jsonl
 experiments/results/error_analysis_errors.csv
 !experiments/results/.gitkeep
+
+# trained model weights are too large for GitHub (rebuild with: python -m experiments.finetune_nli)
+models/*/
+*.safetensors

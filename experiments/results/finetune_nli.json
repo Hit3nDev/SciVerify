@@ -1,0 +1,73 @@
+{
+  "base_model": "cross-encoder/nli-MiniLM2-L6-H768",
+  "output": "models\\nli-scifact",
+  "training_claims": 809,
+  "examples": {
+    "train": {
+      "neutral": 1439,
+      "contradiction": 346,
+      "entailment": 686
+    },
+    "val": {
+      "neutral": 157,
+      "contradiction": 42,
+      "entailment": 54
+    },
+    "by_kind": {
+      "neutral": 1596,
+      "abstract": 564,
+      "rationale": 564
+    }
+  },
+  "config": {
+    "base_model": "cross-encoder/nli-MiniLM2-L6-H768",
+    "out": "models/nli-scifact",
+    "epochs": 3,
+    "batch_size": 8,
+    "lr": 2e-05,
+    "max_length": 320,
+    "negatives_per_claim": 2,
+    "val_fraction": 0.1,
+    "seed": 42
+  },
+  "best_val_macro_f1": 0.7367,
+  "history": [
+    {
+      "epoch": 0,
+      "val": {
+        "loss": 1.2113,
+        "accuracy": 0.6561,
+        "macro_f1": 0.4991
+      }
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.7384,
+      "val": {
+        "loss": 0.5816,
+        "accuracy": 0.7984,
+        "macro_f1": 0.7367
+      }
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.4163,
+      "val": {
+        "loss": 0.7049,
+        "accuracy": 0.8142,
+        "macro_f1": 0.7298
+      }
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.2804,
+      "val": {
+        "loss": 0.9084,
+        "accuracy": 0.8142,
+        "macro_f1": 0.7336
+      }
+    }
+  ],
+  "training_time_seconds": 6868.7,
+  "_provenance": "Produced by experiments/finetune_nli.py on the user's machine (CPU). Validation is a held-out 10% of the TRAIN split; dev was not used."
+}

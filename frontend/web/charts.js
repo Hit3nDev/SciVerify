@@ -79,5 +79,33 @@
     return s;
   }
 
-  window.Charts = { groupedBars, hbars, line, pct };
+  /* Reliability diagram: points of (mean confidence, accuracy) per bin, sized by count, vs the diagonal. */
+  function reliability({ series, height = 260 }) {
+    const W = 560, H = height, L = 44, R = 12, T = 12, B = 32;
+    const plotW = W - L - R, plotH = H - T - B;
+    const x = (v) => L + v * plotW, y = (v) => T + plotH - v * plotH;
+    let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img">`;
+    for (let i = 0; i <= 4; i++) {
+      const v = i / 4;
+      s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`;
+      s += `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${esc(pct(v).replace(".0%", "%"))}</text>`;
+      s += `<text x="${x(v)}" y="${H - 12}" text-anchor="middle">${esc(pct(v).replace(".0%", "%"))}</text>`;
+    }
+    s += `<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" style="stroke:var(--rule-strong);stroke-width:1.5;stroke-dasharray:5 4"/>`;
+    s += `<text x="${x(1) - 4}" y="${y(1) + 14}" text-anchor="end">perfectly calibrated</text>`;
+    series.forEach((ser) => {
+      const pts = ser.bins.filter((b) => b.count > 0);
+      const maxN = Math.max(...pts.map((b) => b.count), 1);
+      const poly = pts.map((b) => `${x(b.confidence)},${y(b.accuracy)}`).join(" ");
+      s += `<polyline points="${poly}" style="fill:none;stroke:${ser.color};stroke-width:1.5;opacity:.6"/>`;
+      pts.forEach((b) => {
+        const r = 3 + 9 * Math.sqrt(b.count / maxN);
+        s += `<circle cx="${x(b.confidence)}" cy="${y(b.accuracy)}" r="${r.toFixed(1)}" style="fill:${ser.color};fill-opacity:.75;stroke:var(--panel);stroke-width:1.5"><title>${esc(ser.name)}: ${b.count} verdicts said ~${esc(pct(b.confidence))} sure, ${esc(pct(b.accuracy))} were right</title></circle>`;
+      });
+    });
+    s += `<text x="${L + plotW / 2}" y="${H - 1}" text-anchor="middle" style="font-size:10px">stated confidence →</text>`;
+    return s + "</svg>";
+  }
+
+  window.Charts = { groupedBars, hbars, line, reliability, pct };
 })();

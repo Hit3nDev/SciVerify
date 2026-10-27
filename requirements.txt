@@ -26,6 +26,7 @@ fastapi>=0.111
 uvicorn[standard]>=0.30
 streamlit>=1.36
 pydantic>=2.7
+python-telegram-bot>=21,<23  # bots/telegram_bot.py
 
 # --- testing ---
 pytest>=8.2

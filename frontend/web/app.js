@@ -97,6 +97,8 @@
   const state = {
     topK: store.get("sv-topk", DEFAULTS.topK),
     thr: store.get("sv-thr", DEFAULTS.thr),
+    judge: store.get("sv-judge", null),
+    judges: [],
     status: null,
     controller: null,
     current: null,
@@ -153,12 +155,18 @@
     const el = $("#status"), text = $(".status-text", el);
     try {
       const s = await api("/status");
+      // The status pill describes the judge currently selected, not just the default one.
+      const mine = (s.judges || []).find((j) => j.key === state.judge);
+      if (mine) {
+        s.model_ready = mine.ready; s.loading = mine.loading; s.error = mine.error;
+        state.judges = s.judges;
+      }
       state.status = s;
-      const model = (s.nli_model || "").split("/").pop();
+      const model = mine ? shortJudge(mine.name) : (s.nli_model || "").split("/").pop();
       if (s.model_ready) {
         el.dataset.state = "ready";
         text.textContent = `Ready · ${model}`;
-        el.title = `Model ${s.nli_model} loaded · ${s.corpus_size?.toLocaleString()} abstracts · ${s.cached_results} cached results`;
+        el.title = `${mine ? mine.path : s.nli_model} loaded · ${s.corpus_size?.toLocaleString()} abstracts · ${s.cached_results} cached results`;
       } else if (s.error) {
         el.dataset.state = "error";
         text.textContent = "Model failed to load";
@@ -168,7 +176,7 @@
         text.textContent = `Loading ${model}…`;
         el.title = "Loading the corpus and the language model. First start can take a minute.";
       }
-      $$("[data-model]").forEach((n) => { n.textContent = model || n.textContent; });
+      $$("[data-model]").forEach((n) => { n.textContent = (s.nli_model || "").split("/").pop() || n.textContent; });
       statusTimer = setTimeout(pollStatus, s.model_ready || s.error ? 20000 : 1500);
     } catch (e) {
       el.dataset.state = "error";
@@ -199,7 +207,34 @@
     panel.hidden = !panel.hidden;
     e.currentTarget.setAttribute("aria-expanded", String(!panel.hidden));
   });
-  const requestOptions = () => ({ top_k: state.topK, min_confidence: state.thr });
+  const requestOptions = () => ({ top_k: state.topK, min_confidence: state.thr, model: state.judge || undefined });
+
+  // ------------------------------------------------------------------ judges
+  const judgeByKey = (key) => state.judges.find((j) => j.key === key);
+  const shortJudge = (name) => String(name || "").replace(/\s*\(.*\)\s*$/, "");
+  function renderJudgeSelect() {
+    const sel = $("#judge");
+    sel.innerHTML = state.judges.map((j) => `<option value="${esc(j.key)}" title="${esc(j.description)}">${esc(j.name)}${j.calibrated ? " · calibrated" : ""}</option>`).join("");
+    sel.value = state.judge;
+    sel.title = (judgeByKey(state.judge) || {}).description || "";
+  }
+  async function loadJudges() {
+    try {
+      const data = await api("/judges");
+      state.judges = data.judges;
+      if (!judgeByKey(state.judge)) state.judge = data.default;
+      store.set("sv-judge", state.judge);
+      renderJudgeSelect();
+      $("#judge").closest(".judge-pick").hidden = state.judges.length < 2;
+    } catch (e) { $("#judge").closest(".judge-pick").hidden = true; }
+  }
+  $("#judge").addEventListener("change", (e) => {
+    state.judge = e.target.value;
+    store.set("sv-judge", state.judge);
+    renderJudgeSelect();
+    api(`/warmup?model=${encodeURIComponent(state.judge)}`, { method: "POST" }).catch(() => {});
+    pollStatus();
+  });
 
   // ------------------------------------------------------------------ composer
   const claimEl = $("#claim");
@@ -400,11 +435,14 @@
             <span class="meter"><i style="width:${pct(r.confidence)}"></i></span></div>
           <div class="stat"><span class="stat-k">Papers judged</span><span class="stat-v">${r.evidence.length}</span></div>
           <div class="stat"><span class="stat-k">Threshold</span><span class="stat-v">${(ctx.thr).toFixed(2)}</span></div>
+          ${r.confidence_calibrated != null ? `<div class="stat" title="After temperature scaling fitted on the training split: a number meant to match how often verdicts like this one are right. The raw value on the left is what the evaluation used."><span class="stat-k">Calibrated</span><span class="stat-v">${r.confidence_calibrated.toFixed(2)}</span><span class="meter"><i style="width:${pct(r.confidence_calibrated)}"></i></span></div>` : ""}
           <div class="stat"><span class="stat-k">Time</span><span class="stat-v">${fmtTime(r.elapsed_seconds)}</span></div>
+          ${r.judge ? `<div class="stat" title="${esc(r.judge)}"><span class="stat-k">Judge</span><span class="stat-v judge-name">${esc(shortJudge(r.judge))}</span></div>` : ""}
           ${answer}
           ${r.cached ? '<span class="cached-tag" title="Same claim and settings as an earlier check, answered from memory">cached</span>' : ""}
         </div>
       </div>
+      <div class="extras" id="extras"></div>
       ${r.evidence.length ? scale(r, ctx) : ""}
       <div class="section-title">
         <h2>Evidence</h2>
@@ -414,6 +452,10 @@
         ? `<ol class="ledger" id="ledger">${r.evidence.map((e, i) => paperCard(e, i, ctx)).join("")}</ol>`
         : `<p class="empty-note">No paper in the corpus shares meaningful vocabulary with this claim. The library only covers biomedical research, so try the <a href="#/library">Library</a> to see what it contains.</p>`}
       <div class="result-actions">
+        ${r.evidence.length ? `<button class="btn" type="button" data-act="counter" title="Build the opposite of this claim and verify it too. A judge that supports both is not reading the evidence.">
+          <svg viewBox="0 0 24 24"><path d="M4 7h13M13 3l4 4-4 4M20 17H7M11 13l-4 4 4 4"/></svg>Check the opposite</button>` : ""}
+        ${state.judges.length > 1 ? `<button class="btn" type="button" data-act="compare" title="Run the same claim through every judge">
+          <svg viewBox="0 0 24 24"><path d="M4 6h7v12H4zM13 6h7v12h-7z"/></svg>Compare judges</button>` : ""}
         <button class="btn" type="button" data-act="share">
           <svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg>Copy link</button>
         <button class="btn" type="button" data-act="md">
@@ -501,7 +543,9 @@
       const t = ev.target.closest("button, a");
       const r = state.current, ctx = state.ctx;
       if (!t || !r || !ctx) return;
-      if (t.matches(".scale-seg")) {
+      if (t.hasAttribute("data-close-extra")) {
+        t.closest(".extra").remove();
+      } else if (t.matches(".scale-seg")) {
         ev.preventDefault();
         const card = $(`#paper-${t.dataset.doc}`);
         card.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -581,8 +625,83 @@
 
   const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50).replace(/^-|-$/g, "");
 
+  const STATUS_LABEL = { consistent: "Consistent", inconsistent: "Unreliable", inconclusive: "Inconclusive" };
+
+  function markChanged(text, changed) {
+    if (!changed) return esc(text);
+    const to = changed[1];
+    const i = text.toLowerCase().indexOf(to.toLowerCase());
+    if (i < 0) return esc(text);
+    return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + to.length)) + "</mark>" + esc(text.slice(i + to.length));
+  }
+
+  async function checkOpposite(r) {
+    const extras = $("#extras");
+    let box = $("#extra-counter");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "extra"; box.id = "extra-counter";
+      extras.appendChild(box);
+    }
+    box.innerHTML = `<div class="extra-head"><h3>Opposite-claim check</h3><span class="eyebrow">verifying the opposite…</span></div><div class="skeleton" style="width:70%"></div>`;
+    try {
+      const c = await api("/counterclaim", { method: "POST", body: JSON.stringify({ claim: r.claim, ...requestOptions(), model: r.judge_key || state.judge }) });
+      const how = { antonym: `swapped “${c.changed?.[0]}” for “${c.changed?.[1]}”`, negate: `inserted “${c.changed?.[1]}”`,
+        "remove-negation": `removed “${c.changed?.[0]}”`, prefix: "prefixed “It is not the case that”" }[c.method] || c.method;
+      box.innerHTML = `
+        <div class="extra-head"><h3>Opposite-claim check</h3><span class="badge ${esc(c.status)}">${esc(STATUS_LABEL[c.status] || c.status)}</span>
+          <button class="link-btn" type="button" data-close-extra>Hide</button></div>
+        <div class="pair">
+          <div class="pair-side"><p class="eyebrow">The claim</p><q>${esc(c.claim)}</q>
+            <div class="mini">${verdictChip(c.verdict)} <span>${c.confidence.toFixed(2)}</span></div></div>
+          <div class="pair-side"><p class="eyebrow">Its opposite (${esc(how)})</p><q>${markChanged(c.counter_claim, c.changed)}</q>
+            <div class="mini">${verdictChip(c.counter_verdict)} <span>${c.counter_confidence.toFixed(2)}</span></div></div>
+        </div>
+        <p class="note${c.status === "inconsistent" ? " warn" : ""}">${esc(c.note)}</p>`;
+    } catch (e) {
+      box.innerHTML = `<div class="extra-head"><h3>Opposite-claim check</h3><button class="link-btn" type="button" data-close-extra>Hide</button></div><p class="note">${esc(e.message)}</p>`;
+    }
+  }
+
+  async function compareJudges(r) {
+    const extras = $("#extras");
+    let box = $("#extra-compare");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "extra"; box.id = "extra-compare";
+      extras.appendChild(box);
+    }
+    const rows = state.judges.map((j) => ({ j, result: j.key === (r.judge_key || state.judge) ? r : null, pending: j.key !== (r.judge_key || state.judge) }));
+    const render = () => {
+      const verdicts = new Set(rows.filter((x) => x.result).map((x) => x.result.verdict));
+      box.innerHTML = `
+        <div class="extra-head"><h3>Every judge on this claim</h3>
+          ${verdicts.size > 1 ? '<span class="badge inconsistent">judges disagree</span>' : rows.every((x) => x.result) ? '<span class="badge consistent">all agree</span>' : ""}
+          <button class="link-btn" type="button" data-close-extra>Hide</button></div>
+        <div class="table-wrap" style="margin:0;border:0"><table class="compare-table">
+          <thead><tr><th>Judge</th><th>Verdict</th><th class="num">Confidence</th><th class="num">Calibrated</th><th class="num">Time</th></tr></thead>
+          <tbody>${rows.map((x) => `<tr class="${x.result === r ? "current" : ""}${x.result && x.result.verdict !== r.verdict ? " disagree" : ""}">
+            <td title="${esc(x.j.description)}"><b>${esc(shortJudge(x.j.name))}</b></td>
+            <td>${x.result ? verdictChip(x.result.verdict) : x.pending ? '<span style="color:var(--muted)">loading judge, then reading papers…</span>' : ""}</td>
+            <td class="num">${x.result ? x.result.confidence.toFixed(2) : ""}</td>
+            <td class="num">${x.result && x.result.confidence_calibrated != null ? x.result.confidence_calibrated.toFixed(2) : x.result ? "—" : ""}</td>
+            <td class="num">${x.result ? fmtTime(x.result.elapsed_seconds) : ""}</td></tr>`).join("")}</tbody></table></div>
+        ${r.gold ? `<p class="note">Dataset answer: ${verdictChip(r.gold.gold_verdict)}</p>` : ""}`;
+    };
+    render();
+    for (const x of rows) {
+      if (x.result) continue;
+      try {
+        x.result = await api("/verify", { method: "POST", body: JSON.stringify({ claim: r.claim, ...requestOptions(), model: x.j.key }) });
+      } catch (e) { x.result = null; x.pending = false; x.error = e.message; }
+      render();
+    }
+  }
+
   function resultAction(act, r) {
-    if (act === "share") copy(shareLink(r), "Link copied. Opening it re-runs this check.");
+    if (act === "counter") checkOpposite(r);
+    else if (act === "compare") compareJudges(r);
+    else if (act === "share") copy(shareLink(r), "Link copied. Opening it re-runs this check.");
     else if (act === "md") download(`sciverify-${slug(r.claim)}.md`, markdownReport(r), "text/markdown");
     else if (act === "json") download(`sciverify-${slug(r.claim)}.json`, JSON.stringify(r, null, 2), "application/json");
     else if (act === "print") window.print();
@@ -598,7 +717,7 @@
   // ------------------------------------------------------------------ history
   function addHistory(r) {
     state.history = [{ at: Date.now(), result: r }, ...state.history.filter((h) => !(h.result.claim === r.claim
-      && JSON.stringify(h.result.settings) === JSON.stringify(r.settings)))].slice(0, 30);
+      && h.result.judge === r.judge && JSON.stringify(h.result.settings) === JSON.stringify(r.settings)))].slice(0, 30);
     store.set("sv-history", state.history);
     renderHistory();
   }
@@ -617,7 +736,7 @@
       <li><button type="button" data-h="${i}" style="--vc:var(--${esc(h.result.verdict)})">
         <span class="h-dot"></span>
         <span class="h-claim">${esc(h.result.claim)}</span>
-        <span class="h-meta">${esc(LABELS[h.result.verdict])} · ${h.result.confidence.toFixed(2)} · ${ago(h.at)}</span>
+        <span class="h-meta">${esc(LABELS[h.result.verdict])} · ${h.result.confidence.toFixed(2)}${h.result.judge ? " · " + esc(shortJudge(h.result.judge)) : ""} · ${ago(h.at)}</span>
       </button></li>`).join("");
     $("#history-empty").hidden = state.history.length > 0;
     $("#history-clear").hidden = !state.history.length;
@@ -874,8 +993,60 @@
         <div class="legend">${series.map((s) => `<span style="--c:${s.color}">${s.name} · MRR ${(s.name === "BM25" ? bm25.mrr : s.name.startsWith("Dense") ? dense.mrr : hybrid.retrieval_metrics.mrr).toFixed(3)}</span>`).join("")}</div></div>`);
     }
 
+    const judgeName = (model) => {
+      const m = String(model || "");
+      if (/bart-large-mnli/.test(m)) return "General judge (bart-large)";
+      if (/nli-scifact/.test(m)) return "Science-trained judge (MiniLM)";
+      if (/MiniLM/i.test(m)) return "Small general judge (MiniLM)";
+      return m.split("/").pop();
+    };
+    const judgeRuns = Object.entries(d)
+      .filter(([k, v]) => /^proposed_bm25_nosel_/.test(k) && !/_train$|_limit\d+$/.test(k) && v.verification && v.num_claims === 300)
+      .map(([k, v]) => ({ key: k, model: v.nli_model, name: judgeName(v.nli_model), acc: v.verification.accuracy, f1: v.verification.macro_f1_gold_classes, v }));
+    if (judgeRuns.length > 1) {
+      const order = ["General judge (bart-large)", "Small general judge (MiniLM)", "Science-trained judge (MiniLM)"];
+      judgeRuns.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+      const series = [
+        { name: "Accuracy", color: "var(--ink)", values: judgeRuns.map((j) => j.acc) },
+        { name: "Macro-F1 (gold classes)", color: "var(--accent)", values: judgeRuns.map((j) => j.f1) },
+      ];
+      const ft = d.finetune_nli;
+      const sci = judgeRuns.find((j) => /Science/.test(j.name)), small = judgeRuns.find((j) => /Small general/.test(j.name)), big = judgeRuns.find((j) => /General judge/.test(j.name));
+      panels.push(`<div class="panel wide"><h2>Training the judge on science</h2>
+        <p class="sub">Same search, same rule, different judge. Verdict accuracy on the 300 dev claims; the science-trained judge never saw them.</p>
+        ${C.groupedBars({ categories: judgeRuns.map((j) => j.name.replace(/ \(.*\)/, "")), series, height: 230 })}
+        <div class="legend">${series.map((s) => `<span style="--c:${s.color}">${s.name}</span>`).join("")}</div>
+        <p class="note">${sci && small ? `Fine-tuning moved the small model from ${pct(small.acc, 1)} to ${pct(sci.acc, 1)}` : ""}${sci && big ? `; the ${sci.acc >= big.acc ? "82M-parameter science-trained judge now matches or beats" : "407M general judge still beats"} the ${sci.acc >= big.acc ? "407M general judge (" + pct(big.acc, 1) + ")" : "82M science-trained one (" + pct(big.acc, 1) + " vs " + pct(sci.acc, 1) + ")"}` : ""}.
+        ${ft ? ` Trained on ${ft.examples.train.toLocaleString()} claim–paper pairs from ${ft.training_claims} training claims in ${Math.round(ft.training_time_seconds / 60)} min on a laptop CPU; best validation macro-F1 ${ft.best_val_macro_f1.toFixed(2)} (validation = a held-out 10% of train).` : ""}</p></div>`);
+    }
+
+    const calibrations = Object.entries(d).filter(([k]) => k.startsWith("calibration_")).map(([, v]) => v);
+    calibrations.forEach((cal) => {
+      const cl = cal.claim_level_dev, pl = cal.paper_level_dev;
+      panels.push(`<div class="panel"><h2>Is the confidence honest? ${esc(judgeName(cal.nli_model).replace(/ \(.*\)/, ""))}</h2>
+        <p class="sub">Each dot: verdicts that claimed a certain confidence, and how many were right. Dots on the dashed line are honest.</p>
+        ${C.reliability({ series: [
+          { name: "Before (raw)", color: "var(--CONTRADICTED)", bins: cl.before.bins },
+          { name: `After (T = ${cal.temperature})`, color: "var(--SUPPORTED)", bins: cl.after.bins },
+        ] })}
+        <div class="legend"><span style="--c:var(--CONTRADICTED)">raw · ECE ${cl.before.ece.toFixed(3)}</span><span style="--c:var(--SUPPORTED)">calibrated · ECE ${cl.after.ece.toFixed(3)}</span></div>
+        <p class="note">Decided verdicts on dev said on average ${pct(cl.before.mean_confidence)} sure but were right ${pct(cl.accuracy_of_decided)} of the time. One temperature (${cal.temperature}) fitted on ${cal.fitted_on.pairs} training pairs brings the stated confidence to ${pct(cl.after.mean_confidence)}. Paper-level ECE ${pl.before.ece.toFixed(3)} → ${pl.after.ece.toFixed(3)} over ${pl.pairs} pairs. No verdict changed.</p></div>`);
+    });
+
+    const ccs = Object.entries(d).filter(([k]) => k.startsWith("counterclaim_eval_") && !/_limit\d+$/.test(k)).map(([, v]) => v);
+    ccs.forEach((cc) => {
+      const st = cc.by_status, names = { consistent: "Consistent (opposite answers)", inconsistent: "Unreliable (same answer for both)", inconclusive: "Inconclusive (an UNKNOWN / CONFLICTING side)" };
+      const items = ["consistent", "inconsistent", "inconclusive"].filter((k) => st[k]).map((k) => ({
+        label: `${names[k]} · ${st[k].claims}`, value: st[k].error_rate, color: k === "inconsistent" ? "var(--CONTRADICTED)" : k === "consistent" ? "var(--SUPPORTED)" : "var(--NEUTRAL)" }));
+      const dec = cc.decided_claims_only;
+      panels.push(`<div class="panel"><h2>Does the opposite-claim check catch errors? ${esc(judgeName(cc.nli_model).replace(/ \(.*\)/, ""))}</h2>
+        <p class="sub">Every dev claim and its opposite were both verified. Bars: how often the claim's verdict was wrong, by what the pair looked like.</p>
+        ${C.hbars({ items, max: 1, labelWidth: 290 })}
+        <p class="note">${st.inconsistent && st.consistent ? `Flagged verdicts are wrong ${pct(st.inconsistent.error_rate)} of the time against ${pct(st.consistent.error_rate)} for consistent ones. ` : ""}${dec && dec.accuracy_if_abstain_on_inconsistent != null ? `Among decided verdicts, abstaining on flagged ones would raise accuracy from ${pct(dec.accuracy, 1)} to ${pct(dec.accuracy_if_abstain_on_inconsistent, 1)} (keeping ${dec.kept} of ${dec.claims}).` : ""} Opposites were built by: ${Object.entries(cc.by_method).map(([m, n]) => `${m} ${n}`).join(", ")}.</p></div>`);
+    });
+
     const systems = Object.entries(d)
-      .filter(([k, v]) => k.startsWith("proposed_") && v.verification && v.num_claims === 300 && v.split !== "train")
+      .filter(([k, v]) => k.startsWith("proposed_") && v.verification && v.num_claims === 300 && v.split !== "train" && /bart-large-mnli$/.test(v.nli_model || ""))
       .map(([k, v]) => ({
         label: `${v.retrieval.toUpperCase()} · ${v.sentence_selection ? `top ${v.sentences_per_doc || 2} sentences` : "whole abstract"}`,
         value: v.verification.accuracy, f1: v.verification.macro_f1_gold_classes,
@@ -990,5 +1161,8 @@
   renderHistory();
   updateHints();
   onRoute();
-  api("/warmup", { method: "POST" }).catch(() => {}).finally(pollStatus);
+  $("#judge").closest(".judge-pick").hidden = true;
+  loadJudges().finally(() => {
+    api(`/warmup${state.judge ? "?model=" + encodeURIComponent(state.judge) : ""}`, { method: "POST" }).catch(() => {}).finally(pollStatus);
+  });
 })();
