@@ -1,0 +1,47 @@
+{
+  "system": "ablation",
+  "retrieval": "bm25",
+  "sentence_selection": false,
+  "sentences_per_doc": null,
+  "nli_model": "models/nli-scifact",
+  "num_claims": 300,
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.7021276595744681,
+      "5": 0.898936170212766,
+      "10": 0.9361702127659575
+    },
+    "mrr": 0.7823286052009456
+  },
+  "verification": {
+    "accuracy": 0.5466666666666666,
+    "macro_f1": 0.39396541078369685,
+    "macro_f1_gold_classes": 0.5252872143782624,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.38095238095238093,
+      "SUPPORTED": 0.7317073170731707,
+      "UNKNOWN": 0.5405405405405406
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.375,
+      "SUPPORTED": 0.4838709677419355,
+      "UNKNOWN": 0.7142857142857143
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.3779527559055118,
+      "SUPPORTED": 0.5825242718446602,
+      "UNKNOWN": 0.6153846153846154
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 64,
+      "SUPPORTED": 124,
+      "UNKNOWN": 112
+    }
+  },
+  "total_time_seconds": 308.1,
+  "avg_latency_per_claim_ms": 1026.9
+}
