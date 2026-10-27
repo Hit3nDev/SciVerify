@@ -1,0 +1,48 @@
+{
+  "system": "ablation",
+  "retrieval": "bm25",
+  "sentence_selection": true,
+  "sentences_per_doc": 2,
+  "nli_model": "facebook/bart-large-mnli",
+  "num_claims": 300,
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.7021276595744681,
+      "5": 0.898936170212766,
+      "10": 0.9361702127659575
+    },
+    "mrr": 0.7823286052009456
+  },
+  "verification": {
+    "accuracy": 0.49666666666666665,
+    "macro_f1": 0.3817483438324204,
+    "macro_f1_gold_classes": 0.5089977917765606,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.38596491228070173,
+      "SUPPORTED": 0.8245614035087719,
+      "UNKNOWN": 0.5087719298245614
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.6875,
+      "SUPPORTED": 0.3790322580645161,
+      "UNKNOWN": 0.5178571428571429
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.4943820224719101,
+      "SUPPORTED": 0.5193370165745856,
+      "UNKNOWN": 0.5132743362831859
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 64,
+      "SUPPORTED": 124,
+      "UNKNOWN": 112
+    }
+  },
+  "total_time_seconds": 1107.5,
+  "avg_latency_per_claim_ms": 3691.8,
+  "_provenance": "Produced by the user running experiments/run_proposed.py on the real SciFact dev set (300 claims, bart-large-mnli, CPU laptop). Recorded verbatim from terminal screenshots."
+}

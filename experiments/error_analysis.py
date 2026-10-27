@@ -34,6 +34,7 @@ from typing import Dict, Iterable, List, Optional, Set
 from data.loader import load_claims, load_config
 
 _DIGIT = re.compile(r"\d")
+_WANT = {"SUPPORTED": "entailment", "CONTRADICTED": "contradiction"}  # NLI label that matches a gold verdict
 
 
 def categorize_error(row: dict, gold_doc_ids: Iterable[int]) -> Optional[str]:
@@ -53,6 +54,49 @@ def categorize_error(row: dict, gold_doc_ids: Iterable[int]) -> Optional[str]:
     if pred == "UNKNOWN":
         return "evidence_retrieved_not_recognised"
     return "polarity_flip"
+
+
+def judge_on_gold_documents(rows: List[dict], gold_ids_by_claim: Dict[int, Iterable[int]]) -> Dict[str, int]:
+    """How often the NLI model labels the ANNOTATED evidence document correctly.
+
+    Only claims whose gold verdict is SUPPORTED/CONTRADICTED are considered. This separates
+    'the judge got the key paper wrong' from 'the judge was right but the final rule lost it'.
+    """
+    out: Counter = Counter()
+    for r in rows:
+        if r["gold"] not in _WANT:
+            continue
+        out["gold_evidence_claims"] += 1
+        ids = set(gold_ids_by_claim[r["claim_id"]])
+        docs = [d for d in r["docs"] if d["doc_id"] in ids]
+        if not docs:
+            out["gold_doc_not_retrieved"] += 1
+            continue
+        out["gold_doc_retrieved"] += 1
+        if any(d["nli"] == _WANT[r["gold"]] for d in docs):
+            out["judge_right"] += 1
+            out["judge_right_final_right" if r["gold"] == r["pred"] else "judge_right_final_wrong"] += 1
+        elif all(d["nli"] == "neutral" for d in docs):
+            out["judge_said_neutral"] += 1
+        else:
+            out["judge_said_opposite"] += 1
+    return dict(out)
+
+
+def recombination_ceiling(rows: List[dict]) -> int:
+    """Claims that COULD be answered correctly by some rule that only recombines the saved
+    per-document NLI labels, assuming perfect knowledge of which claims have evidence and which
+    document to trust. An optimistic upper bound for any decision rule, not an achievable score."""
+    reachable = 0
+    for r in rows:
+        labels = {d["nli"] for d in r["docs"]}
+        if r["gold"] == "UNKNOWN":
+            reachable += 1
+        elif r["gold"] == "CONFLICTING":
+            reachable += {"entailment", "contradiction"} <= labels
+        elif r["gold"] in _WANT:
+            reachable += _WANT[r["gold"]] in labels
+    return reachable
 
 
 def confusion_matrix(rows: List[dict]) -> Dict[str, Dict[str, int]]:
@@ -128,6 +172,14 @@ def main() -> None:
     for k, v in flag_stats.items():
         rate = "n/a" if v["error_rate"] is None else f"{v['error_rate']:.1%}"
         print(f"  {k:28s} claims={v['claims']:4d} errors={v['errors']:4d} rate={rate}")
+    gold_ids_by_claim = {r["claim_id"]: claims[r["claim_id"]].gold_doc_ids() for r in rows}
+    judge = judge_on_gold_documents(rows, gold_ids_by_claim)
+    ceiling = recombination_ceiling(rows)
+    print("\nJudge on the annotated evidence document:")
+    for k, v in judge.items():
+        print(f"  {k:28s} {v}")
+    print(f"\nCeiling for any rule that only recombines the saved judgements: {ceiling}/{len(rows)} = {ceiling / len(rows):.3f}"
+          " (optimistic: assumes perfect knowledge of which claims have evidence)")
     print("\nExamples:")
     for cat, items in by_category.items():
         print(f"\n[{cat}]")
@@ -140,7 +192,8 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "error_analysis.json").write_text(json.dumps({
         "claims": len(rows), "errors": total_err, "by_category": dict(categories),
-        "confusion_matrix": confusion_matrix(rows), "by_claim_property": flag_stats}, indent=2))
+        "confusion_matrix": confusion_matrix(rows), "by_claim_property": flag_stats,
+        "judge_on_gold_documents": judge, "recombination_ceiling": {"correct": ceiling, "of": len(rows)}}, indent=2))
     with open(out_dir / "error_analysis_errors.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(csv_rows[0]) if csv_rows else ["claim_id"])
         w.writeheader()

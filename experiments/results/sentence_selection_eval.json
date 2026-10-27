@@ -1,0 +1,38 @@
+{
+  "1": {
+    "pairs": 209,
+    "selected_hit_rate": 0.464,
+    "first_n_hit_rate": 0.057,
+    "selected_gold_sentence_recall": 0.327,
+    "first_n_gold_sentence_recall": 0.042
+  },
+  "2": {
+    "pairs": 209,
+    "selected_hit_rate": 0.679,
+    "first_n_hit_rate": 0.148,
+    "selected_gold_sentence_recall": 0.509,
+    "first_n_gold_sentence_recall": 0.105
+  },
+  "3": {
+    "pairs": 209,
+    "selected_hit_rate": 0.799,
+    "first_n_hit_rate": 0.263,
+    "selected_gold_sentence_recall": 0.651,
+    "first_n_gold_sentence_recall": 0.188
+  },
+  "4": {
+    "pairs": 209,
+    "selected_hit_rate": 0.88,
+    "first_n_hit_rate": 0.411,
+    "selected_gold_sentence_recall": 0.735,
+    "first_n_gold_sentence_recall": 0.328
+  },
+  "5": {
+    "pairs": 209,
+    "selected_hit_rate": 0.919,
+    "first_n_hit_rate": 0.569,
+    "selected_gold_sentence_recall": 0.795,
+    "first_n_gold_sentence_recall": 0.485
+  },
+  "_provenance": "Produced by the user running experiments/eval_sentence_selection.py on the real dev set. Values are rounded to 3 decimals as printed."
+}

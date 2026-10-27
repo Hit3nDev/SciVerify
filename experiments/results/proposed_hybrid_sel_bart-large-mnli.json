@@ -1,0 +1,48 @@
+{
+  "system": "proposed (hybrid retrieval + sentence selection)",
+  "retrieval": "hybrid",
+  "sentence_selection": true,
+  "sentences_per_doc": 2,
+  "nli_model": "facebook/bart-large-mnli",
+  "num_claims": 300,
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.6968085106382979,
+      "5": 0.9148936170212766,
+      "10": 0.9468085106382979
+    },
+    "mrr": 0.7939631881121243
+  },
+  "verification": {
+    "accuracy": 0.5166666666666667,
+    "macro_f1": 0.39506471184102765,
+    "macro_f1_gold_classes": 0.5267529491213702,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.4017857142857143,
+      "SUPPORTED": 0.8360655737704918,
+      "UNKNOWN": 0.5086206896551724
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.703125,
+      "SUPPORTED": 0.4112903225806452,
+      "UNKNOWN": 0.5267857142857143
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.5113636363636364,
+      "SUPPORTED": 0.5513513513513514,
+      "UNKNOWN": 0.5175438596491229
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 64,
+      "SUPPORTED": 124,
+      "UNKNOWN": 112
+    }
+  },
+  "total_time_seconds": 1081.6,
+  "avg_latency_per_claim_ms": 3605.3,
+  "_provenance": "Produced by the user running experiments/run_proposed.py (hybrid + sentence selection, bart-large-mnli) on the real SciFact dev set. Recorded verbatim from terminal output. RESULT: worse than Baseline C on verification (accuracy 0.517 vs 0.590)."
+}

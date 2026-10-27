@@ -1,0 +1,46 @@
+{
+  "system": "ablation",
+  "retrieval": "bm25",
+  "sentence_selection": true,
+  "nli_model": "facebook/bart-large-mnli",
+  "num_claims": 30,
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.85,
+      "5": 0.95,
+      "10": 1.0
+    },
+    "mrr": 0.89125
+  },
+  "verification": {
+    "accuracy": 0.6333333333333333,
+    "macro_f1": 0.4833333333333333,
+    "macro_f1_gold_classes": 0.6444444444444444,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.5454545454545454,
+      "SUPPORTED": 0.8571428571428571,
+      "UNKNOWN": 0.6363636363636364
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.8571428571428571,
+      "SUPPORTED": 0.46153846153846156,
+      "UNKNOWN": 0.7
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.6666666666666666,
+      "SUPPORTED": 0.6,
+      "UNKNOWN": 0.6666666666666666
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 7,
+      "SUPPORTED": 13,
+      "UNKNOWN": 10
+    }
+  },
+  "total_time_seconds": 115.2,
+  "avg_latency_per_claim_ms": 3839.4
+}

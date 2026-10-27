@@ -1,0 +1,49 @@
+{
+  "baseline": "BM25 retrieval + NLI (Baseline C)",
+  "retriever_used": "bm25",
+  "nli_model": "facebook/bart-large-mnli",
+  "evidence_top_k": 3,
+  "min_confidence_for_verdict": 0.5,
+  "corpus_size": 5183,
+  "num_dev_claims_total": 300,
+  "retrieval": {
+    "recall_at_k": {
+      "1": 0.7021276595744681,
+      "5": 0.898936170212766,
+      "10": 0.9361702127659575
+    },
+    "mrr": 0.7823286052009456
+  },
+  "verification": {
+    "accuracy": 0.59,
+    "macro_f1": 0.4501942137035624,
+    "macro_f1_gold_classes": 0.6002589516047498,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.45161290322580644,
+      "SUPPORTED": 0.813953488372093,
+      "UNKNOWN": 0.6190476190476191
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.65625,
+      "SUPPORTED": 0.5645161290322581,
+      "UNKNOWN": 0.5803571428571429
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.535031847133758,
+      "SUPPORTED": 0.6666666666666666,
+      "UNKNOWN": 0.5990783410138248
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 64,
+      "SUPPORTED": 124,
+      "UNKNOWN": 112
+    }
+  },
+  "total_pipeline_time_seconds": 2006.508,
+  "avg_latency_per_claim_ms": 6688.36,
+  "_provenance": "Produced by the user running experiments/run_baseline_c.py on a CPU-only Windows machine against the real SciFact dev set. Recorded verbatim from terminal output. NOTE: this run used facebook/bart-large-mnli, not the lighter MiniLM model later set in configs/verification.yaml. macro_f1_gold_classes was NOT printed by that run (the metric did not exist yet); it is derived here as the mean of the three per-class F1 values that have gold support."
+}

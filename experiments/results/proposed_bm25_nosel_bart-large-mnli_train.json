@@ -1,0 +1,48 @@
+{
+  "system": "ablation",
+  "retrieval": "bm25",
+  "sentence_selection": false,
+  "sentences_per_doc": null,
+  "nli_model": "facebook/bart-large-mnli",
+  "split": "train",
+  "num_claims": 809,
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.7188118811881188,
+      "5": 0.904950495049505,
+      "10": 0.9346534653465347
+    },
+    "mrr": 0.7948255539839695
+  },
+  "verification": {
+    "accuracy": 0.5636588380716935,
+    "macro_f1": 0.4349056432917995,
+    "macro_f1_gold_classes": 0.5798741910557327,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.463519313304721,
+      "SUPPORTED": 0.7783018867924528,
+      "UNKNOWN": 0.6
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.6242774566473989,
+      "SUPPORTED": 0.49698795180722893,
+      "UNKNOWN": 0.6019736842105263
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.5320197044334976,
+      "SUPPORTED": 0.6066176470588235,
+      "UNKNOWN": 0.6009852216748769
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 173,
+      "SUPPORTED": 332,
+      "UNKNOWN": 304
+    }
+  },
+  "_timing_note": "The laptop was suspended during this run (the log jumps from 5,395 s to 32,678 s and later to 61,674 s with no work done), so total_time_seconds and avg_latency_per_claim_ms are meaningless. Accuracy/F1 are unaffected: the dev rerun reproduced Baseline C exactly (0.590).",
+  "_provenance": "Produced by the user running run_proposed.py --split train. Recorded verbatim; timing fields omitted as invalid."
+}

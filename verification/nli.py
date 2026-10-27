@@ -17,7 +17,7 @@ network access, and callers inject a fn rather than a hardcoded model.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Dict, Optional
 
 from data.schema import RawLabel
@@ -30,6 +30,7 @@ class NliPrediction:
     raw_nli_label: str                 # "entailment" | "contradiction" | "neutral"
     mapped_label: Optional[RawLabel]   # None means neutral/NEI (no RawLabel)
     score: float                       # softmax probability of raw_nli_label
+    probs: Dict[str, float] = field(default_factory=dict)  # all three class probabilities (UI only)
 
 
 def get_nli_fn(model_name: str, label_map: Dict[str, str]) -> NliFn:
@@ -71,6 +72,8 @@ def get_nli_fn(model_name: str, label_map: Dict[str, str]) -> NliFn:
         mapped = label_map.get(raw_label)  # e.g. "entailment" -> "SUPPORT"
         mapped_label = RawLabel(mapped) if mapped in ("SUPPORT", "CONTRADICT") else None
 
-        return NliPrediction(raw_nli_label=raw_label, mapped_label=mapped_label, score=score)
+        all_probs = {id2label[i]: float(p) for i, p in enumerate(probs.tolist())}
+        return NliPrediction(raw_nli_label=raw_label, mapped_label=mapped_label, score=score,
+                             probs=all_probs)
 
     return predict

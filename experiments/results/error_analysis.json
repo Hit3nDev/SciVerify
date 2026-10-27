@@ -1,0 +1,76 @@
+{
+  "claims": 300,
+  "errors": 123,
+  "by_category": {
+    "spurious_conflict": 16,
+    "evidence_retrieved_not_recognised": 27,
+    "polarity_flip": 22,
+    "retrieval_miss": 15,
+    "verdict_without_gold_evidence": 43
+  },
+  "confusion_matrix": {
+    "UNKNOWN": {
+      "CONFLICTING": 4,
+      "UNKNOWN": 65,
+      "CONTRADICTED": 34,
+      "SUPPORTED": 9
+    },
+    "SUPPORTED": {
+      "UNKNOWN": 25,
+      "CONTRADICTED": 17,
+      "SUPPORTED": 70,
+      "CONFLICTING": 12
+    },
+    "CONTRADICTED": {
+      "UNKNOWN": 15,
+      "CONTRADICTED": 42,
+      "SUPPORTED": 7
+    }
+  },
+  "by_claim_property": {
+    "numeric_claim=True": {
+      "claims": 114,
+      "errors": 47,
+      "error_rate": 0.41228070175438597
+    },
+    "numeric_claim=False": {
+      "claims": 186,
+      "errors": 76,
+      "error_rate": 0.40860215053763443
+    },
+    "multi_evidence_claim=True": {
+      "claims": 10,
+      "errors": 2,
+      "error_rate": 0.2
+    },
+    "multi_evidence_claim=False": {
+      "claims": 290,
+      "errors": 121,
+      "error_rate": 0.41724137931034483
+    },
+    "long_claim=True": {
+      "claims": 129,
+      "errors": 51,
+      "error_rate": 0.3953488372093023
+    },
+    "long_claim=False": {
+      "claims": 171,
+      "errors": 72,
+      "error_rate": 0.42105263157894735
+    }
+  },
+  "judge_on_gold_documents": {
+    "gold_evidence_claims": 188,
+    "gold_doc_retrieved": 158,
+    "judge_said_neutral": 36,
+    "judge_said_opposite": 18,
+    "judge_right": 104,
+    "judge_right_final_right": 92,
+    "judge_right_final_wrong": 12,
+    "gold_doc_not_retrieved": 30
+  },
+  "recombination_ceiling": {
+    "correct": 237,
+    "of": 300
+  }
+}

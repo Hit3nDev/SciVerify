@@ -11,5 +11,6 @@ data/processed/
 .env
 .DS_Store
 notebooks/.ipynb_checkpoints/
-experiments/results/*.json
+experiments/results/*_predictions.jsonl
+experiments/results/error_analysis_errors.csv
 !experiments/results/.gitkeep

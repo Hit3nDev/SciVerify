@@ -1,0 +1,23 @@
+{
+  "baseline": "Dense retrieval (Baseline B)",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "corpus_size": 5183,
+  "num_dev_claims_total": 300,
+  "num_claims_scored": 188,
+  "num_claims_excluded_no_gold_evidence": 112,
+  "recall_at_k": {
+    "1": 0.6276595744680851,
+    "5": 0.8776595744680851,
+    "10": 0.9202127659574468
+  },
+  "mrr": 0.7313724248564676,
+  "index_build_time_seconds": 232.898,
+  "total_eval_time_seconds": 2.466,
+  "avg_latency_per_claim_ms": 13.12,
+  "config": {
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "top_k": 10,
+    "index_type": "flat_ip"
+  },
+  "_provenance": "Produced by the user running experiments/run_dense_baseline.py against the real downloaded SciFact dev set on 2026-09-21. Recorded verbatim."
+}

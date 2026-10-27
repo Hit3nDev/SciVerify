@@ -152,9 +152,54 @@ All four rows: same 300 dev claims, same NLI model (`bart-large-mnli`), top-3 do
 - Baseline C on the 809 train claims scores 0.564 accuracy / 0.580 macro-F1, slightly below the dev figures (0.590 / 0.600). The larger sample is the better estimate of its true accuracy; the dev set (300 claims, standard error roughly 3 points) is small, so dev differences of a few points between configurations should not be over-read.
 - Reproducibility: re-running Baseline C on dev reproduced 0.590 exactly.
 
-**Error analysis tooling (Phase 10), not yet run on real data:** `experiments/error_analysis.py` reads the saved predictions and the dataset, classifies every error (retrieval miss, polarity flip, evidence retrieved but not recognised, verdict given when no gold evidence exists, spurious conflict), checks numeric / multi-evidence / long claims, and writes a CSV with a blank `manual_category` column for hand labelling the categories that cannot be detected automatically (terminology mismatch, ambiguous claim, misleading evidence).
+**Error analysis (Phase 10) — real results for Baseline C on the dev set: 123 of 300 verdicts wrong (41%).**
+
+| Gold \ predicted | SUPPORTED | CONTRADICTED | UNKNOWN | CONFLICTING |
+|---|---|---|---|---|
+| SUPPORTED (124) | 70 | 17 | 25 | 12 |
+| CONTRADICTED (64) | 7 | 42 | 15 | 0 |
+| UNKNOWN (112) | 9 | 34 | 65 | 4 |
+
+| Automatic error category | Errors | Share |
+|---|---|---|
+| Verdict given although no gold evidence exists | 43 | 35% |
+| Gold evidence retrieved, judge did not recognise it | 27 | 22% |
+| Gold evidence retrieved, judge said the opposite | 22 | 18% |
+| Spurious CONFLICTING (dev has no conflicting claims) | 16 | 13% |
+| Gold evidence not among the 3 retrieved papers | 15 | 12% |
+
+What the data shows (measured), and what is only a hypothesis (marked):
+1. **88% of errors (108/123) happen after retrieval**, in the judging or decision stage. Retrieval misses are 12%. This agrees with the earlier finding that retrieval is already good (Recall@10 = 0.936).
+2. **The judge often mislabels the key paper itself.** Of 158 claims with gold evidence where the annotated paper was retrieved, the judge labelled that paper correctly for 104 (65.8%); it said neutral for 36 and the opposite for 18. Another 12 claims were lost afterwards although the key paper was judged correctly. A further 30 claims had the annotated paper outside the top 3.
+3. **No-evidence claims get a verdict too often:** 43 of 112 received SUPPORTED or CONTRADICTED, 34 of them CONTRADICTED (30% of such claims, versus 8% SUPPORTED). *Hypothesis, not tested:* MNLI-style models tend to answer "contradiction" for text that is on-topic but does not address the claim, and SciFact's no-evidence claims are on-topic for the retrieved papers. The median confidence of these wrong verdicts is 0.78 versus 0.89 for correct SUPPORTED/CONTRADICTED verdicts, an overlap that is consistent with why the confidence cutoff could not separate them.
+4. **16 spurious conflicts** (12 SUPPORTED, 4 no-evidence claims): typically one paper judged entailment with high confidence and another judged contradiction. The saved outputs cannot tell whether the contradicting paper is a genuine disagreement or merely a loosely related paper; that needs reading the abstracts.
+5. **Claim properties show no detectable effect:** numeric claims 41.2% errors vs 40.9%; negated claims 40.0% vs 41.1%; claims longer than the median 39.5% vs 42.1%. The flags are crude (any digit, a negation word list), so this does not prove these are easy. Only 10 dev claims need two or more evidence papers (2 errors), too few to conclude anything.
+6. **Ceiling for decision rules:** even a rule with perfect knowledge of which claims have evidence and which paper to trust, using only the judge's saved labels, could reach 0.79 (237/300). That bound is optimistic; a realistic rule would gain far less. For 63 of the 188 gold-evidence claims, none of the three retrieved papers received the right label, and no decision rule can fix those. Larger gains therefore need a better judge (or better retrieval for the 30 misses), not a different way of combining the same judgements.
+
+**Coverage of the error types in the project specification:** measured automatically: retrieval failure, conflicting evidence (as spurious conflict), insufficient evidence (verdict without gold evidence), numerical claims (crude), multi-evidence claims (too few). Not measurable automatically and **not yet analysed**: terminology mismatch, ambiguous claims, misleading evidence, near-duplicate irrelevant papers. `error_analysis.py` writes a CSV with a blank `manual_category` column for labelling these by reading the abstracts.
 
 **Not yet tried:** an NLI model trained on scientific claims (for example fine-tuned on the SciFact train rationales), and a different decision rule for combining per-document judgements.
+
+## Run the demo (Phase 11)
+
+```powershell
+uvicorn api.main:app --port 8000                                                                 # web app at http://localhost:8000, API docs at /docs
+python -m experiments.demo "Monoclonal antibody targeting of N-cadherin inhibits metastasis."   # command line
+streamlit run frontend/app.py                                                                    # older, simpler web page
+```
+The demo runs the best system found in the evaluation (BM25 + whole-abstract NLI with `facebook/bart-large-mnli`). See `DEMO.md` for the full guide.
+
+The web app (`frontend/web/`, plain HTML/CSS/JS served by FastAPI, works offline) has five sections:
+
+- **Verify:** live progress as each paper is read, then the verdict, a weight-of-evidence bar, and one card per paper. Each card shows its search score, the model's full entail/neutral/contradict split, and the abstract with the best-matching sentences and claim words highlighted. *Find deciding sentences* judges every sentence on its own (a reading aid only: the verdict always uses the whole abstract). Dataset claims show the dataset's answer and the annotated evidence paper. Settings change the number of papers and the evidence threshold. Results can be shared as a link or exported as Markdown, JSON or PDF. Recent checks are kept in the browser.
+- **Batch:** many claims at once (typed, imported from CSV/TXT, or drawn from the dev set), with live agreement against the answer key and CSV/JSON export.
+- **Library:** BM25 search over the 5,183 abstracts, plus a paper reader.
+- **Benchmarks:** charts drawn from `experiments/results/*.json`.
+- **Method:** how a verdict is reached and the system's limits.
+
+API endpoints: `POST /verify` (optional `top_k`, `min_confidence`), `POST /verify/stream` (newline-delimited JSON progress events), `POST /explain`, `GET /search`, `GET /papers/{id}`, `GET /examples`, `GET /benchmarks`, `GET /status`. Repeated claims are answered from an in-memory cache.
+
+**Status:** covered by 94 passing tests that use stand-in models. The real-model path was also run end to end through the web app. Latency is not reported (timings were invalid).
 
 ## Setup
 ```bash
@@ -178,7 +223,7 @@ sciverify/
 ├── evaluation/        # (Phase 8+) metrics: Recall@K, MRR, F1, Macro-F1
 ├── experiments/       # experiment runner, ROADMAP.md, results (once real)
 ├── api/               # (Phase 11) FastAPI backend
-├── frontend/          # (Phase 11) Streamlit UI
+├── frontend/          # web/ = the web app served by the API; app.py = older Streamlit page
 ├── tests/             # pytest suite, growing with each phase
 ├── configs/           # data.yaml, model.yaml, experiment configs
 └── notebooks/         # (Phase 10) error analysis

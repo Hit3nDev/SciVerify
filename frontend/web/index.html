@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SciVerify</title>
+<meta name="description" content="Check a scientific claim against 5,183 biomedical abstracts and see the evidence.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231d1c1a'/%3E%3Cpath d='M9 17l5 5 9-11' stroke='%23f5f1e8' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/styles.css">
+<script>
+  try { const t = localStorage.getItem("sv-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="#/verify" aria-label="SciVerify home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M8 17l5.5 5.5L24 10"/></svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-name">SciVerify</span>
+        <span class="brand-sub">Evidence-backed claim checking</span>
+      </span>
+    </a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#/verify" data-route="verify">Verify</a>
+      <a href="#/batch" data-route="batch">Batch</a>
+      <a href="#/library" data-route="library">Library</a>
+      <a href="#/benchmarks" data-route="benchmarks">Benchmarks</a>
+      <a href="#/method" data-route="method">Method</a>
+    </nav>
+    <div class="masthead-tools">
+      <button class="status" id="status" type="button" title="Model status">
+        <span class="status-dot"></span><span class="status-text">Connecting…</span>
+      </button>
+      <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch light / dark theme" title="Theme (T)">
+        <svg viewBox="0 0 24 24" class="i-sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+        <svg viewBox="0 0 24 24" class="i-moon"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="page">
+
+  <!-- ================================================================ VERIFY -->
+  <section class="view" data-view="verify">
+    <div class="verify-grid">
+      <div class="verify-main">
+        <form class="composer" id="composer" autocomplete="off">
+          <div class="composer-head">
+            <label for="claim" class="eyebrow">The claim</label>
+            <span class="counter" id="counter">0 / 1000</span>
+          </div>
+          <textarea id="claim" rows="3" maxlength="5000" spellcheck="true"
+            placeholder="Type a scientific claim, e.g. “Monoclonal antibody targeting of N-cadherin inhibits metastasis.”"></textarea>
+          <div class="claim-hints" id="claim-hints" aria-live="polite"></div>
+
+          <div class="composer-actions">
+            <button class="btn btn-primary" id="verify-btn" type="submit">
+              <span>Verify claim</span><kbd>Ctrl ↵</kbd>
+            </button>
+            <div class="split">
+              <button class="btn" id="random-btn" type="button" title="Draw a real claim from the SciFact dev set (R)">
+                <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><circle cx="8.5" cy="8.5" r="1.3"/><circle cx="15.5" cy="15.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/></svg>
+                Random dataset claim
+              </button>
+              <select id="random-label" aria-label="Which kind of dataset claim">
+                <option value="">any answer</option>
+                <option value="SUPPORTED">supported</option>
+                <option value="CONTRADICTED">contradicted</option>
+                <option value="UNKNOWN">no evidence</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost" id="settings-btn" type="button" aria-expanded="false" aria-controls="settings">
+              <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+              Settings
+            </button>
+          </div>
+
+          <div class="settings" id="settings" hidden>
+            <label class="setting">
+              <span class="setting-name">Papers to judge <output id="topk-out">3</output></span>
+              <input type="range" id="topk" min="1" max="10" step="1" value="3">
+              <span class="setting-help">More papers find more evidence but take longer and add noise. The evaluation used 3.</span>
+            </label>
+            <label class="setting">
+              <span class="setting-name">Evidence threshold <output id="thr-out">0.50</output></span>
+              <input type="range" id="thr" min="0" max="0.99" step="0.01" value="0.5">
+              <span class="setting-help">A paper only counts if the model is at least this sure. Tuned on train: 0.7; evaluated at 0.5.</span>
+            </label>
+            <button class="link-btn" type="button" id="settings-reset">Reset to evaluated defaults</button>
+          </div>
+        </form>
+
+        <div class="examples" id="examples">
+          <p class="eyebrow">Try one of these</p>
+          <div class="example-cards" id="example-cards"></div>
+        </div>
+
+        <div class="progress" id="progress" hidden aria-live="polite">
+          <ol class="stations">
+            <li data-step="load"><span class="st-dot"></span><span class="st-label">Load model</span><span class="st-sub">first run only</span></li>
+            <li data-step="search"><span class="st-dot"></span><span class="st-label">Search</span><span class="st-sub">5,183 abstracts</span></li>
+            <li data-step="judge"><span class="st-dot"></span><span class="st-label">Read papers</span><span class="st-sub" id="judge-sub">0 / 3</span></li>
+            <li data-step="weigh"><span class="st-dot"></span><span class="st-label">Weigh evidence</span><span class="st-sub">aggregate</span></li>
+          </ol>
+          <div class="progress-foot"><span id="elapsed">0.0 s</span><button class="link-btn" type="button" id="cancel-btn">Cancel</button></div>
+        </div>
+
+        <div class="error-box" id="error-box" hidden role="alert"></div>
+
+        <article class="result" id="result" hidden></article>
+      </div>
+
+      <aside class="history" id="history-panel" aria-label="Recent checks">
+        <div class="history-head">
+          <h2 class="eyebrow">Recent checks</h2>
+          <button class="link-btn" type="button" id="history-clear">Clear</button>
+        </div>
+        <ol class="history-list" id="history-list"></ol>
+        <p class="history-empty" id="history-empty">Claims you check appear here, stored only in this browser.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================================================================ BATCH -->
+  <section class="view" data-view="batch" hidden>
+    <header class="view-head">
+      <h1>Batch verification</h1>
+      <p class="lede">Check many claims in one go, one per line. Draw claims from the dataset to run a small live benchmark against its answer key.</p>
+    </header>
+    <div class="batch-input">
+      <textarea id="batch-text" rows="7" placeholder="One claim per line…"></textarea>
+      <div class="batch-actions">
+        <button class="btn btn-primary" id="batch-run" type="button">Run batch</button>
+        <button class="btn" id="batch-stop" type="button" hidden>Stop</button>
+        <span class="divider-v"></span>
+        <label class="inline-field">Draw <input type="number" id="batch-n" min="1" max="50" value="10"> dataset claims</label>
+        <button class="btn" id="batch-draw" type="button">Draw</button>
+        <label class="btn btn-ghost file-btn">
+          <svg viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 15v4h14v-4"/></svg>
+          Import CSV / TXT<input type="file" id="batch-file" accept=".csv,.txt,text/csv,text/plain">
+        </label>
+      </div>
+    </div>
+    <div class="batch-summary" id="batch-summary" hidden></div>
+    <div class="table-wrap" id="batch-table-wrap" hidden>
+      <table class="data-table" id="batch-table">
+        <thead><tr><th>#</th><th>Claim</th><th>Verdict</th><th class="num">Conf.</th><th>Answer key</th><th class="num">Time</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="batch-export" id="batch-export" hidden>
+      <button class="btn" type="button" id="batch-csv">Export CSV</button>
+      <button class="btn" type="button" id="batch-json">Export JSON</button>
+    </div>
+  </section>
+
+  <!-- ================================================================ LIBRARY -->
+  <section class="view" data-view="library" hidden>
+    <header class="view-head">
+      <h1>The library</h1>
+      <p class="lede">Every verdict is drawn from these 5,183 SciFact abstracts. Search them directly with the same BM25 index the verifier uses (no model involved).</p>
+    </header>
+    <form class="search-bar" id="search-form" role="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+      <input id="search-q" type="search" placeholder="Search abstracts: genes, drugs, diseases…" aria-label="Search abstracts">
+      <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+    <ol class="search-results" id="search-results"></ol>
+  </section>
+
+  <!-- ================================================================ BENCHMARKS -->
+  <section class="view" data-view="benchmarks" hidden>
+    <header class="view-head">
+      <h1>How well it works</h1>
+      <p class="lede">Recorded results on the SciFact dev set (300 claims), read live from <code>experiments/results/</code>. Nothing on this page is typed in by hand.</p>
+    </header>
+    <div id="bench"></div>
+  </section>
+
+  <!-- ================================================================ METHOD -->
+  <section class="view" data-view="method" hidden>
+    <header class="view-head">
+      <h1>How a claim is checked</h1>
+      <p class="lede">Four plain steps. Every one is visible in the result, so you can see why a verdict was reached and where it went wrong.</p>
+    </header>
+    <ol class="pipeline">
+      <li><span class="pipe-n">1</span><h3>Search</h3><p>BM25 keyword search ranks all 5,183 abstracts by word overlap with the claim. The right paper is in the top 10 for 93.6% of dev claims.</p></li>
+      <li><span class="pipe-n">2</span><h3>Read</h3><p>A natural-language-inference model (<span class="mono" data-model>bart-large-mnli</span>) reads each of the top papers and decides whether it <em>entails</em>, <em>contradicts</em> or is <em>neutral</em> to the claim.</p></li>
+      <li><span class="pipe-n">3</span><h3>Weigh</h3><p>Papers only count if the model is confident. Support only gives <b>SUPPORTED</b>; contradiction only gives <b>CONTRADICTED</b>; both give <b>CONFLICTING</b>; neither gives <b>UNKNOWN</b>.</p></li>
+      <li><span class="pipe-n">4</span><h3>Show</h3><p>Every paper used is listed with its search score, the model's full probability split, and the sentences that best match the claim.</p></li>
+    </ol>
+
+    <div class="two-col">
+      <div class="panel">
+        <h2>Verdicts</h2>
+        <dl class="verdict-key">
+          <dt><span class="chip v-SUPPORTED">Supported</span></dt><dd>At least one retrieved paper confidently entails the claim and none contradicts it.</dd>
+          <dt><span class="chip v-CONTRADICTED">Contradicted</span></dt><dd>At least one paper confidently contradicts it and none supports it.</dd>
+          <dt><span class="chip v-CONFLICTING">Conflicting</span></dt><dd>Papers disagree. The system reports the disagreement instead of picking a side.</dd>
+          <dt><span class="chip v-UNKNOWN">Unknown</span></dt><dd>No paper gave confident evidence either way, or nothing relevant was found.</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2>Honest limits</h2>
+        <ul class="plain">
+          <li>It only knows 5,183 biomedical abstracts. Claims outside that area usually come back <b>Unknown</b>.</li>
+          <li>About <b>6 in 10</b> verdicts match the dataset's answer key on the dev set.</li>
+          <li>Confidence is the model's own probability, <b>not</b> a calibrated chance of being right.</li>
+          <li>The weak link is the judging model, not the search: it labels the key paper correctly 65.8% of the time.</li>
+          <li>The sentence analysis on each paper is a reading aid. The verdict always uses the whole abstract.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel api-panel">
+      <h2>Use it from code</h2>
+      <p>The same engine is a JSON API. Interactive docs are at <a href="/docs" target="_blank" rel="noopener">/docs</a>.</p>
+      <pre class="code"><code>curl -X POST http://localhost:8000/verify \
+  -H "Content-Type: application/json" \
+  -d '{"claim": "Monoclonal antibody targeting of N-cadherin inhibits metastasis.", "top_k": 3}'</code></pre>
+    </div>
+    <p class="fineprint">Data: SciFact (Wadden et al., EMNLP 2020), CC BY-NC 2.0, non-commercial use only.</p>
+  </section>
+</main>
+
+<!-- Paper reader -->
+<dialog class="reader" id="reader" aria-labelledby="reader-title">
+  <div class="reader-inner">
+    <header class="reader-head">
+      <span class="eyebrow" id="reader-id"></span>
+      <button class="icon-btn" type="button" id="reader-close" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+    <h2 id="reader-title"></h2>
+    <div class="reader-body" id="reader-body"></div>
+    <footer class="reader-foot">
+      <button class="btn" type="button" id="reader-use">Use the title as a claim</button>
+    </footer>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/static/charts.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

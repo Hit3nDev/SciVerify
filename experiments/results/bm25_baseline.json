@@ -1,0 +1,23 @@
+{
+  "baseline": "BM25 (Baseline A)",
+  "corpus_size": 5183,
+  "num_dev_claims_total": 300,
+  "num_claims_scored": 188,
+  "num_claims_excluded_no_gold_evidence": 112,
+  "recall_at_k": {
+    "1": 0.7021276595744681,
+    "5": 0.898936170212766,
+    "10": 0.9361702127659575
+  },
+  "mrr": 0.7823286052009456,
+  "index_build_time_seconds": 0.901,
+  "total_eval_time_seconds": 6.744,
+  "avg_latency_per_claim_ms": 35.87,
+  "config": {
+    "tokenizer": "simple_lowercase_alnum",
+    "k1": 1.5,
+    "b": 0.75,
+    "top_k": 10
+  },
+  "_provenance": "Produced by the user running experiments/run_bm25_baseline.py against the real downloaded SciFact dev set on 2026-09-21. Recorded verbatim, not regenerated in the dev sandbox (which lacks network access to the dataset)."
+}

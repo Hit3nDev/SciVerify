@@ -1,0 +1,48 @@
+{
+  "system": "ablation",
+  "retrieval": "bm25",
+  "sentence_selection": false,
+  "sentences_per_doc": null,
+  "nli_model": "facebook/bart-large-mnli",
+  "split": "dev",
+  "num_claims": 300,
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.7021276595744681,
+      "5": 0.898936170212766,
+      "10": 0.9361702127659575
+    },
+    "mrr": 0.7823286052009456
+  },
+  "verification": {
+    "accuracy": 0.59,
+    "macro_f1": 0.4501942137035624,
+    "macro_f1_gold_classes": 0.6002589516047498,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.45161290322580644,
+      "SUPPORTED": 0.813953488372093,
+      "UNKNOWN": 0.6190476190476191
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.65625,
+      "SUPPORTED": 0.5645161290322581,
+      "UNKNOWN": 0.5803571428571429
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.535031847133758,
+      "SUPPORTED": 0.6666666666666666,
+      "UNKNOWN": 0.5990783410138248
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 64,
+      "SUPPORTED": 124,
+      "UNKNOWN": 112
+    }
+  },
+  "_timing_note": "The laptop was suspended during this run (the log jumps from 5,395 s to 32,678 s and later to 61,674 s with no work done), so total_time_seconds and avg_latency_per_claim_ms are meaningless. Accuracy/F1 are unaffected: the dev rerun reproduced Baseline C exactly (0.590).",
+  "_provenance": "Rerun of Baseline C with per-claim prediction logging. Recorded verbatim; timing fields omitted as invalid."
+}

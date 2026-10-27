@@ -13,7 +13,7 @@ not what was attempted.
 | 7 | (merged into Phase 6) | — |
 | 8 | Full benchmark experiments | **Done for the current systems** (A, B, C, hybrid, sentence-selection variants, threshold sweep). Timings are invalid and must be re-measured. |
 | 9 | Ablation study | **Done for the components built:** sentence selection hurts, hybrid retrieval gives a small retrieval gain only, threshold tuning gives nothing. Single runs, no significance test. |
-| 10 | Error analysis | **Tool built and tested on synthetic data (`experiments/error_analysis.py`); not yet run on real predictions.** |
-| 11 | Streamlit UI + FastAPI backend | Not started |
+| 10 | Error analysis | **Automatic part done on real data** (123/300 errors; 88% after retrieval; judge labels the gold paper correctly 65.8% of the time). Manual categories (terminology mismatch, ambiguity, misleading evidence) still to do. |
+| 11 | FastAPI backend, Streamlit page, command-line demo | **Built, 73 tests pass with stand-in models; real-model run still to be confirmed on the author's machine.** |
 | 12 | Docker + full test suite | Not started |
 | 13 | Research report with real results | Not started |

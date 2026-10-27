@@ -45,3 +45,10 @@ proposed:
   evidence_top_k: 3        # documents passed to the NLI stage
   sentence_selection: true # false = feed the whole abstract, as in Baseline C
   sentences_per_doc: 2
+
+demo:
+  # The demo/API run the best system found in the evaluation (Baseline C): BM25 + whole-abstract NLI.
+  # The model is facebook/bart-large-mnli because ALL reported accuracy numbers were measured with it.
+  # The lighter model in nli.model_name above was never evaluated on SciFact, so it is not used here.
+  nli_model: "facebook/bart-large-mnli"
+  evidence_top_k: 3

@@ -52,3 +52,27 @@ def test_error_rate_by_flag_and_confusion_matrix():
     assert stats["numeric_claim=True"]["error_rate"] == 0.0
     assert stats["numeric_claim=False"]["error_rate"] == 1.0
     assert confusion_matrix(rows)["SUPPORTED"] == {"SUPPORTED": 1, "UNKNOWN": 1}
+
+
+def test_judge_on_gold_documents_and_ceiling():
+    from experiments.error_analysis import judge_on_gold_documents, recombination_ceiling
+
+    def r(cid, gold, pred, docs):
+        return {"claim_id": cid, "claim": "c", "gold": gold, "pred": pred,
+                "docs": [{"doc_id": d, "nli": n, "label": None, "score": 0.9} for d, n in docs]}
+
+    rows = [
+        r(1, "SUPPORTED", "SUPPORTED", [(1, "entailment")]),                     # judge right, final right
+        r(2, "SUPPORTED", "CONFLICTING", [(2, "entailment"), (9, "contradiction")]),  # judge right, final wrong
+        r(3, "SUPPORTED", "UNKNOWN", [(3, "neutral")]),                           # judge said neutral
+        r(4, "CONTRADICTED", "SUPPORTED", [(4, "entailment")]),                   # judge said opposite
+        r(5, "SUPPORTED", "UNKNOWN", [(8, "neutral")]),                           # gold doc not retrieved
+        r(6, "UNKNOWN", "SUPPORTED", [(6, "entailment")]),
+    ]
+    gold_ids = {1: [1], 2: [2], 3: [3], 4: [4], 5: [5], 6: []}
+    j = judge_on_gold_documents(rows, gold_ids)
+    assert j["gold_evidence_claims"] == 5 and j["gold_doc_retrieved"] == 4 and j["gold_doc_not_retrieved"] == 1
+    assert j["judge_right"] == 2 and j["judge_right_final_wrong"] == 1
+    assert j["judge_said_neutral"] == 1 and j["judge_said_opposite"] == 1
+    # reachable: claim1, claim2 (some doc has the right label) and claim6 (UNKNOWN is always reachable)
+    assert recombination_ceiling(rows) == 3
