@@ -1,0 +1,47 @@
+{
+  "system": "ablation",
+  "retrieval": "bm25",
+  "sentence_selection": false,
+  "sentences_per_doc": null,
+  "nli_model": "cross-encoder/nli-MiniLM2-L6-H768",
+  "num_claims": 300,
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.7021276595744681,
+      "5": 0.898936170212766,
+      "10": 0.9361702127659575
+    },
+    "mrr": 0.7823286052009456
+  },
+  "verification": {
+    "accuracy": 0.3933333333333333,
+    "macro_f1": 0.24614226977162035,
+    "macro_f1_gold_classes": 0.3281896930288271,
+    "per_class_precision": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.2923076923076923,
+      "SUPPORTED": 0.7333333333333333,
+      "UNKNOWN": 0.4018264840182648
+    },
+    "per_class_recall": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.296875,
+      "SUPPORTED": 0.08870967741935484,
+      "UNKNOWN": 0.7857142857142857
+    },
+    "per_class_f1": {
+      "CONFLICTING": 0.0,
+      "CONTRADICTED": 0.29457364341085274,
+      "SUPPORTED": 0.15827338129496402,
+      "UNKNOWN": 0.5317220543806647
+    },
+    "support": {
+      "CONFLICTING": 0,
+      "CONTRADICTED": 64,
+      "SUPPORTED": 124,
+      "UNKNOWN": 112
+    }
+  },
+  "total_time_seconds": 231.4,
+  "avg_latency_per_claim_ms": 771.2
+}
