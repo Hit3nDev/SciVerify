@@ -18,3 +18,7 @@ experiments/results/error_analysis_errors.csv
 # trained model weights are too large for GitHub (rebuild with: python -m experiments.finetune_nli)
 models/*/
 *.safetensors
+
+# macOS resource forks and editor settings
+._*
+.vscode/

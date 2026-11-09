@@ -12,7 +12,7 @@ drawn from high-quality biomedical journals.
 
 ## Status: Phase 5 of 13 (see `experiments/ROADMAP.md`)
 
-**Real BM25 baseline results** (run by the user on 2026-09-21, on the real
+**Real BM25 baseline results** (run on 2026-09-21, on the real
 downloaded dev set — not simulated):
 
 | Metric | Value |
